@@ -3,6 +3,19 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+# all checkpoints
+*.ckpt
+*.pt
+*.pth
+*.pkl
+*/*.ckpt
+*/*.pt
+*/*.pth
+*/*.pkl
+
+./language-models/checkpoints/
+./language-models/results/
+
 # C extensions
 *.so
 
