@@ -13,8 +13,18 @@ __pycache__/
 */*.pth
 */*.pkl
 
+*.tar.gz
+
+./cnn/cifar-10-batches-py/*
+
+cnn/cifar-10-batches-py/*/*
+cnn/cifar-10-batches-py/*
+
 ./language-models/checkpoints/
 ./language-models/results/
+
+./*/checkpoints/
+./*/results/
 
 # C extensions
 *.so
