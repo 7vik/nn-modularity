@@ -67,15 +67,19 @@ def ful_modular_acc():
     for sample in tqdm(data):
         input, target = sample[0], sample[1]
         tokens = model.to_tokens(input)
-        logits, cache = model.run_with_cache(tokens)
-        a = logits[:,-1,:].argmax(dim=-1)
-        predicted = model.to_string(a)
-        if predicted.split()[0] == target.split()[0]:
-            correct_tlens+=1
-            total_tlens+=1
-        else: total_tlens+=1
+        tokens = "Markgraf and her two sisters fired"
+        predicted = model.generate(tokens, max_new_tokens=20)
+        # logits, cache = model.run_with_cache(tokens)
+        # a = logits[:,-1,:].argmax(dim=-1)
+        # predicted = model.to_string(a)
+        print(predicted)
+        # if predicted.split()[0] == target.split()[0]:
+        #     correct_tlens+=1
+        #     total_tlens+=1
+        # else: total_tlens+=1
+        break
     
-    return correct_tlens/total_tlens
+    # return correct_tlens/total_tlens
 
 
     
@@ -99,11 +103,11 @@ def non_modular_acc():
     
 
 if __name__ == "__main__":
-    acc1 = huggingface_gpt2_acc()
-    acc2 = gpt2small_acc()
+    # acc1 = huggingface_gpt2_acc()
+    # acc2 = gpt2small_acc()
     acc3 = ful_modular_acc()
-    acc4 = non_modular_acc()
+    # acc4 = non_modular_acc()
     
     print()
-    print("Hugging Face Acc \t GPT2-Small Acc \t Fully Modular Acc \t Non Modular Acc")
-    print(f"{acc1} \t  \t  {acc2} \t \t {acc3} \t \t {acc4}")
+    # print("Hugging Face Acc \t GPT2-Small Acc \t Fully Modular Acc \t Non Modular Acc")
+    # print(f"{acc1} \t  \t  {acc2} \t \t {acc3} \t \t {acc4}")
