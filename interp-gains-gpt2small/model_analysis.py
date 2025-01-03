@@ -41,7 +41,7 @@ def get_activations(args):
     layer_activation = {idx: [] for idx in range(12)}
 
 
-    for data_ in make_wiki_data_loader(tokenizer, batch_size=args.batch_size):
+    for data_ in tqdm(make_wiki_data_loader(tokenizer, batch_size=args.batch_size)):
         for layer_idx in tqdm(range(12)):
             data = data_['tokens'].to(device)
             # logits, clean_cache = model_nmod.run_with_cache(data)
