@@ -42,7 +42,7 @@ def get_activations(args):
 
 
     for data_ in tqdm(make_wiki_data_loader(tokenizer, batch_size=args.batch_size)):
-        for layer_idx in tqdm(range(12)):
+        for layer_idx in range(12):
             data = data_['tokens'].to(device)
             # logits, clean_cache = model_nmod.run_with_cache(data)
             activation = hook(model_nmod, layer_idx)
@@ -70,7 +70,7 @@ def main():
 
     args = parser.parse_args()
     
-    get_activations(args.device, args.batch_size)
+    get_activations(args)
     
     
 
