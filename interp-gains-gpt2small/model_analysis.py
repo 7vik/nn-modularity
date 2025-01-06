@@ -30,7 +30,7 @@ def get_activations(args):
             self.output = None
         
         def hook_fn(self, module, input, output):
-            self.output = output
+            self.output = output.detach().cpu()
             return output
 
         def forward(self):
