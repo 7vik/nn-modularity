@@ -2,6 +2,8 @@ pip install nnsight
 pip install transformer_lens
 pip install gdown
 
+mkdir interp-gains-gpt2small/logs
+
 gdown https://drive.google.com/uc?id=1TkWHR-2EGEXxHw4sRN6V6CdN-G2O8RPG
 mv wiki_fully_modular_mlp_in_out.pt interp-gains-gpt2small/data/wiki_fully_modular_mlp_in_out.pt
 
