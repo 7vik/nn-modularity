@@ -42,9 +42,8 @@ def get_activations(args):
 
     i = 0 
 
-    for data_ in tqdm(make_wiki_data_loader(tokenizer, batch_size=args.batch_size)):
-        i+=1
-        for layer_idx in range(12):
+    for layer_idx in range(12):
+        for data_ in tqdm(make_wiki_data_loader(tokenizer, batch_size=args.batch_size)):
             data = data_['tokens'].to(device)
             # logits, clean_cache = model_nmod.run_with_cache(data)
             activation = hook(model_nmod, layer_idx)
@@ -54,11 +53,10 @@ def get_activations(args):
             layer_activation[layer_idx].append(output)
             logging.info(f"Latest added activation shape: {layer_activation[layer_idx][-1].size()}")
             logging.info(f"Layer {layer_idx} activation length: {len(layer_activation[layer_idx])}")
-        if i == 50:break
 
-    os.makedirs("interp-gains-gpt2small/data", exist_ok=True)
-    with open('interp-gains-gpt2small/data/layer_activation_nmod.pkl', 'wb') as f:
-        pkl.dump(layer_activation, f)
+            os.makedirs("interp-gains-gpt2small/data", exist_ok=True)
+            with open(f'interp-gains-gpt2small/data/layer_activation_nmod_{layer_idx}.pkl', 'wb') as f:
+                pkl.dump(layer_activation, f)
         
         
     logging.info("Done\n\n\n")
