@@ -48,6 +48,7 @@ def get_activations(args):
             activation = hook(model_nmod, layer_idx)
             logits = model_nmod(data)
             output = activation.forward()
+            activation.hook.remove()
             layer_activation[layer_idx].append(output)
             logging.info(f"Latest added activation shape: {layer_activation[layer_idx][-1].size()}")
             logging.info(f"Layer {layer_idx} activation length: {len(layer_activation[layer_idx])}")
