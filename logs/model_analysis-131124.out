@@ -1,0 +1,9 @@
+/var/spool/slurmd/job131124/slurm_script: line 10: /data/joan_velja/anaconda3/etc/profile.d/conda.sh: No such file or directory
+
+CondaError: Run 'conda init' before 'conda activate'
+
+Traceback (most recent call last):
+  File "/data/joan_velja/nn-modularity/interp-gains-gpt2small/model_analysis.py", line 2, in <module>
+    from config import MODEL_PATHS
+ImportError: cannot import name 'MODEL_PATHS' from 'config' (/data/joan_velja/nn-modularity/interp-gains-gpt2small/config.py)
+srun: error: compute-permanent-node-506: task 0: Exited with exit code 1

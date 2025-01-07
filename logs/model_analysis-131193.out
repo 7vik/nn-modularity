@@ -1,0 +1,20 @@
+/var/spool/slurmd/job131193/slurm_script: line 10: /data/joan_velja/anaconda3/etc/profile.d/conda.sh: No such file or directory
+
+CondaError: Run 'conda init' before 'conda activate'
+
+/data/joan_velja/miniconda3/envs/modularity/lib/python3.11/site-packages/transformers/tokenization_utils_base.py:1601: FutureWarning: `clean_up_tokenization_spaces` was not set. It will be set to `True` by default. This behavior will be depracted in transformers v4.45, and will be then set to `False` by default. For more details check this issue: https://github.com/huggingface/transformers/issues/31884
+  warnings.warn(
+Loaded pretrained model gpt2-small into HookedTransformer
+/data/joan_velja/nn-modularity/interp-gains-gpt2small/model_analysis_refactored.py:72: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  model_nmod.load_state_dict(torch.load(PATHS["models"]["non_modular"], map_location=device))
+Moving model to device:  cuda
+Traceback (most recent call last):
+  File "/data/joan_velja/nn-modularity/interp-gains-gpt2small/model_analysis_refactored.py", line 162, in <module>
+    main()
+  File "/data/joan_velja/nn-modularity/interp-gains-gpt2small/model_analysis_refactored.py", line 159, in main
+    get_activations(args)
+  File "/data/joan_velja/nn-modularity/interp-gains-gpt2small/model_analysis_refactored.py", line 103, in get_activations
+    for batch_idx, data_ in enumerate(tqdm(make_wiki_data_loader(
+                                           ^^^^^^^^^^^^^^^^^^^^^^
+TypeError: make_wiki_data_loader() got an unexpected keyword argument 'pin_memory'
+srun: error: compute-permanent-node-506: task 0: Exited with exit code 1

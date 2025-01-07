@@ -1,0 +1,207 @@
+/var/spool/slurmd/job131194/slurm_script: line 10: /data/joan_velja/anaconda3/etc/profile.d/conda.sh: No such file or directory
+
+CondaError: Run 'conda init' before 'conda activate'
+
+/data/joan_velja/miniconda3/envs/modularity/lib/python3.11/site-packages/transformers/tokenization_utils_base.py:1601: FutureWarning: `clean_up_tokenization_spaces` was not set. It will be set to `True` by default. This behavior will be depracted in transformers v4.45, and will be then set to `False` by default. For more details check this issue: https://github.com/huggingface/transformers/issues/31884
+  warnings.warn(
+Loaded pretrained model gpt2-small into HookedTransformer
+/data/joan_velja/nn-modularity/interp-gains-gpt2small/model_analysis_refactored.py:72: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  model_nmod.load_state_dict(torch.load(PATHS["models"]["non_modular"], map_location=device))
+Moving model to device:  cuda
+36718
+  0%|          | 0/37 [00:00<?, ?it/s]/data/joan_velja/nn-modularity/interp-gains-gpt2small/model_analysis_refactored.py:107: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.inference_mode(), torch.cuda.amp.autocast():
+  0%|          | 0/37 [00:00<?, ?it/s]
+Traceback (most recent call last):
+  File "/data/joan_velja/miniconda3/envs/modularity/lib/python3.11/site-packages/torch/_dynamo/variables/ctx_manager.py", line 154, in enter
+    ).call_function(tx, [], {})
+      ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/data/joan_velja/miniconda3/envs/modularity/lib/python3.11/site-packages/torch/_dynamo/variables/functions.py", line 385, in call_function
+    return super().call_function(tx, args, kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/data/joan_velja/miniconda3/envs/modularity/lib/python3.11/site-packages/torch/_dynamo/variables/functions.py", line 324, in call_function
+    return super().call_function(tx, args, kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/data/joan_velja/miniconda3/envs/modularity/lib/python3.11/site-packages/torch/_dynamo/variables/functions.py", line 111, in call_function
+    return tx.inline_user_function_return(self, [*self.self_args(), *args], kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/data/joan_velja/miniconda3/envs/modularity/lib/python3.11/site-packages/torch/_dynamo/symbolic_convert.py", line 836, in inline_user_function_return
+    return InliningInstructionTranslator.inline_call(self, fn, args, kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/data/joan_velja/miniconda3/envs/modularity/lib/python3.11/site-packages/torch/_dynamo/symbolic_convert.py", line 3011, in inline_call
+    return cls.inline_call_(parent, func, args, kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/data/joan_velja/miniconda3/envs/modularity/lib/python3.11/site-packages/torch/_dynamo/symbolic_convert.py", line 3139, in inline_call_
+    tracer.run()
+  File "/data/joan_velja/miniconda3/envs/modularity/lib/python3.11/site-packages/torch/_dynamo/symbolic_convert.py", line 983, in run
+    while self.step():
+          ^^^^^^^^^^^
+  File "/data/joan_velja/miniconda3/envs/modularity/lib/python3.11/site-packages/torch/_dynamo/symbolic_convert.py", line 895, in step
+    self.dispatch_table[inst.opcode](self, inst)
+  File "/data/joan_velja/miniconda3/envs/modularity/lib/python3.11/site-packages/torch/_dynamo/symbolic_convert.py", line 582, in wrapper
+    return inner_fn(self, inst)
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/data/joan_velja/miniconda3/envs/modularity/lib/python3.11/site-packages/torch/_dynamo/symbolic_convert.py", line 2279, in CALL
+    self._call(inst)
+  File "/data/joan_velja/miniconda3/envs/modularity/lib/python3.11/site-packages/torch/_dynamo/symbolic_convert.py", line 2273, in _call
+    self.call_function(fn, args, kwargs)
+  File "/data/joan_velja/miniconda3/envs/modularity/lib/python3.11/site-packages/torch/_dynamo/symbolic_convert.py", line 830, in call_function
+    self.push(fn.call_function(self, args, kwargs))  # type: ignore[arg-type]
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/data/joan_velja/miniconda3/envs/modularity/lib/python3.11/site-packages/torch/_dynamo/variables/builtin.py", line 967, in call_function
+    return handler(tx, args, kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/data/joan_velja/miniconda3/envs/modularity/lib/python3.11/site-packages/torch/_dynamo/variables/builtin.py", line 839, in builtin_dispatch
+    rv = handler(tx, args, kwargs)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/data/joan_velja/miniconda3/envs/modularity/lib/python3.11/site-packages/torch/_dynamo/variables/builtin.py", line 766, in call_self_handler
+    result = self_handler(tx, *args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/data/joan_velja/miniconda3/envs/modularity/lib/python3.11/site-packages/torch/_dynamo/variables/builtin.py", line 1978, in call_deepcopy
+    unimplemented(f"copy.deepcopy {repr(x)}")
+  File "/data/joan_velja/miniconda3/envs/modularity/lib/python3.11/site-packages/torch/_dynamo/exc.py", line 297, in unimplemented
+    raise Unsupported(msg, case_name=case_name)
+torch._dynamo.exc.Unsupported: copy.deepcopy ConstantVariable()
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/data/joan_velja/nn-modularity/interp-gains-gpt2small/model_analysis_refactored.py", line 161, in <module>
+    main()
+  File "/data/joan_velja/nn-modularity/interp-gains-gpt2small/model_analysis_refactored.py", line 158, in main
+    get_activations(args)
+  File "/data/joan_velja/nn-modularity/interp-gains-gpt2small/model_analysis_refactored.py", line 109, in get_activations
+    _ = compiled_process(model_nmod, data, hook_module)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/data/joan_velja/miniconda3/envs/modularity/lib/python3.11/site-packages/torch/_dynamo/eval_frame.py", line 465, in _fn
+    return fn(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^
+  File "/data/joan_velja/miniconda3/envs/modularity/lib/python3.11/site-packages/torch/_dynamo/convert_frame.py", line 1269, in __call__
+    return self._torchdynamo_orig_callable(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/data/joan_velja/miniconda3/envs/modularity/lib/python3.11/site-packages/torch/_dynamo/convert_frame.py", line 526, in __call__
+    return _compile(
+           ^^^^^^^^^
+  File "/data/joan_velja/miniconda3/envs/modularity/lib/python3.11/site-packages/torch/_dynamo/convert_frame.py", line 924, in _compile
+    guarded_code = compile_inner(code, one_graph, hooks, transform)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/data/joan_velja/miniconda3/envs/modularity/lib/python3.11/site-packages/torch/_dynamo/convert_frame.py", line 666, in compile_inner
+    return _compile_inner(code, one_graph, hooks, transform)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/data/joan_velja/miniconda3/envs/modularity/lib/python3.11/site-packages/torch/_utils_internal.py", line 87, in wrapper_function
+    return function(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/data/joan_velja/miniconda3/envs/modularity/lib/python3.11/site-packages/torch/_dynamo/convert_frame.py", line 699, in _compile_inner
+    out_code = transform_code_object(code, transform)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/data/joan_velja/miniconda3/envs/modularity/lib/python3.11/site-packages/torch/_dynamo/bytecode_transformation.py", line 1322, in transform_code_object
+    transformations(instructions, code_options)
+  File "/data/joan_velja/miniconda3/envs/modularity/lib/python3.11/site-packages/torch/_dynamo/convert_frame.py", line 219, in _fn
+    return fn(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^
+  File "/data/joan_velja/miniconda3/envs/modularity/lib/python3.11/site-packages/torch/_dynamo/convert_frame.py", line 634, in transform
+    tracer.run()
+  File "/data/joan_velja/miniconda3/envs/modularity/lib/python3.11/site-packages/torch/_dynamo/symbolic_convert.py", line 2796, in run
+    super().run()
+  File "/data/joan_velja/miniconda3/envs/modularity/lib/python3.11/site-packages/torch/_dynamo/symbolic_convert.py", line 983, in run
+    while self.step():
+          ^^^^^^^^^^^
+  File "/data/joan_velja/miniconda3/envs/modularity/lib/python3.11/site-packages/torch/_dynamo/symbolic_convert.py", line 895, in step
+    self.dispatch_table[inst.opcode](self, inst)
+  File "/data/joan_velja/miniconda3/envs/modularity/lib/python3.11/site-packages/torch/_dynamo/symbolic_convert.py", line 582, in wrapper
+    return inner_fn(self, inst)
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/data/joan_velja/miniconda3/envs/modularity/lib/python3.11/site-packages/torch/_dynamo/symbolic_convert.py", line 2279, in CALL
+    self._call(inst)
+  File "/data/joan_velja/miniconda3/envs/modularity/lib/python3.11/site-packages/torch/_dynamo/symbolic_convert.py", line 2273, in _call
+    self.call_function(fn, args, kwargs)
+  File "/data/joan_velja/miniconda3/envs/modularity/lib/python3.11/site-packages/torch/_dynamo/symbolic_convert.py", line 830, in call_function
+    self.push(fn.call_function(self, args, kwargs))  # type: ignore[arg-type]
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/data/joan_velja/miniconda3/envs/modularity/lib/python3.11/site-packages/torch/_dynamo/variables/lazy.py", line 156, in realize_and_forward
+    return getattr(self.realize(), name)(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/data/joan_velja/miniconda3/envs/modularity/lib/python3.11/site-packages/torch/_dynamo/variables/nn_module.py", line 899, in call_function
+    return variables.UserFunctionVariable(fn, source=source).call_function(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/data/joan_velja/miniconda3/envs/modularity/lib/python3.11/site-packages/torch/_dynamo/variables/functions.py", line 324, in call_function
+    return super().call_function(tx, args, kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/data/joan_velja/miniconda3/envs/modularity/lib/python3.11/site-packages/torch/_dynamo/variables/functions.py", line 111, in call_function
+    return tx.inline_user_function_return(self, [*self.self_args(), *args], kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/data/joan_velja/miniconda3/envs/modularity/lib/python3.11/site-packages/torch/_dynamo/symbolic_convert.py", line 836, in inline_user_function_return
+    return InliningInstructionTranslator.inline_call(self, fn, args, kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/data/joan_velja/miniconda3/envs/modularity/lib/python3.11/site-packages/torch/_dynamo/symbolic_convert.py", line 3011, in inline_call
+    return cls.inline_call_(parent, func, args, kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/data/joan_velja/miniconda3/envs/modularity/lib/python3.11/site-packages/torch/_dynamo/symbolic_convert.py", line 3139, in inline_call_
+    tracer.run()
+  File "/data/joan_velja/miniconda3/envs/modularity/lib/python3.11/site-packages/torch/_dynamo/symbolic_convert.py", line 983, in run
+    while self.step():
+          ^^^^^^^^^^^
+  File "/data/joan_velja/miniconda3/envs/modularity/lib/python3.11/site-packages/torch/_dynamo/symbolic_convert.py", line 895, in step
+    self.dispatch_table[inst.opcode](self, inst)
+  File "/data/joan_velja/miniconda3/envs/modularity/lib/python3.11/site-packages/torch/_dynamo/symbolic_convert.py", line 582, in wrapper
+    return inner_fn(self, inst)
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/data/joan_velja/miniconda3/envs/modularity/lib/python3.11/site-packages/torch/_dynamo/symbolic_convert.py", line 2279, in CALL
+    self._call(inst)
+  File "/data/joan_velja/miniconda3/envs/modularity/lib/python3.11/site-packages/torch/_dynamo/symbolic_convert.py", line 2273, in _call
+    self.call_function(fn, args, kwargs)
+  File "/data/joan_velja/miniconda3/envs/modularity/lib/python3.11/site-packages/torch/_dynamo/symbolic_convert.py", line 830, in call_function
+    self.push(fn.call_function(self, args, kwargs))  # type: ignore[arg-type]
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/data/joan_velja/miniconda3/envs/modularity/lib/python3.11/site-packages/torch/_dynamo/variables/lazy.py", line 156, in realize_and_forward
+    return getattr(self.realize(), name)(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/data/joan_velja/miniconda3/envs/modularity/lib/python3.11/site-packages/torch/_dynamo/variables/nn_module.py", line 899, in call_function
+    return variables.UserFunctionVariable(fn, source=source).call_function(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/data/joan_velja/miniconda3/envs/modularity/lib/python3.11/site-packages/torch/_dynamo/variables/functions.py", line 324, in call_function
+    return super().call_function(tx, args, kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/data/joan_velja/miniconda3/envs/modularity/lib/python3.11/site-packages/torch/_dynamo/variables/functions.py", line 111, in call_function
+    return tx.inline_user_function_return(self, [*self.self_args(), *args], kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/data/joan_velja/miniconda3/envs/modularity/lib/python3.11/site-packages/torch/_dynamo/symbolic_convert.py", line 836, in inline_user_function_return
+    return InliningInstructionTranslator.inline_call(self, fn, args, kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/data/joan_velja/miniconda3/envs/modularity/lib/python3.11/site-packages/torch/_dynamo/symbolic_convert.py", line 3011, in inline_call
+    return cls.inline_call_(parent, func, args, kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/data/joan_velja/miniconda3/envs/modularity/lib/python3.11/site-packages/torch/_dynamo/symbolic_convert.py", line 3139, in inline_call_
+    tracer.run()
+  File "/data/joan_velja/miniconda3/envs/modularity/lib/python3.11/site-packages/torch/_dynamo/symbolic_convert.py", line 983, in run
+    while self.step():
+          ^^^^^^^^^^^
+  File "/data/joan_velja/miniconda3/envs/modularity/lib/python3.11/site-packages/torch/_dynamo/symbolic_convert.py", line 895, in step
+    self.dispatch_table[inst.opcode](self, inst)
+  File "/data/joan_velja/miniconda3/envs/modularity/lib/python3.11/site-packages/torch/_dynamo/symbolic_convert.py", line 2299, in BEFORE_WITH
+    self.setup_or_before_with(inst)
+  File "/data/joan_velja/miniconda3/envs/modularity/lib/python3.11/site-packages/torch/_dynamo/symbolic_convert.py", line 2345, in setup_or_before_with
+    self.push(ctx.enter(self))
+              ^^^^^^^^^^^^^^^
+  File "/data/joan_velja/miniconda3/envs/modularity/lib/python3.11/site-packages/torch/_dynamo/variables/ctx_manager.py", line 156, in enter
+    unimplemented(
+  File "/data/joan_velja/miniconda3/envs/modularity/lib/python3.11/site-packages/torch/_dynamo/exc.py", line 296, in unimplemented
+    raise Unsupported(msg, case_name=case_name) from from_exc
+torch._dynamo.exc.Unsupported: Unsupported context manager <transformer_lens.utils.LocallyOverridenDefaults object at 0x792cea442e90>'s __enter__ function
+
+from user code:
+   File "/data/joan_velja/nn-modularity/interp-gains-gpt2small/model_analysis_refactored.py", line 38, in process_layer_batch
+    return hook_module(data)
+  File "/data/joan_velja/nn-modularity/interp-gains-gpt2small/model_analysis_refactored.py", line 32, in forward
+    return self.model(x)
+  File "/data/joan_velja/miniconda3/envs/modularity/lib/python3.11/site-packages/transformer_lens/HookedTransformer.py", line 537, in forward
+    with utils.LocallyOverridenDefaults(
+
+Set TORCH_LOGS="+dynamo" and TORCHDYNAMO_VERBOSE=1 for more information
+
+
+You can suppress this exception and fall back to eager by setting:
+    import torch._dynamo
+    torch._dynamo.config.suppress_errors = True
+
+srun: error: compute-permanent-node-506: task 0: Exited with exit code 1

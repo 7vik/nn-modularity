@@ -1,0 +1,54 @@
+/var/spool/slurmd/job131219/slurm_script: line 10: /data/joan_velja/anaconda3/etc/profile.d/conda.sh: No such file or directory
+
+CondaError: Run 'conda init' before 'conda activate'
+
+/data/joan_velja/miniconda3/envs/modularity/lib/python3.11/site-packages/transformers/tokenization_utils_base.py:1601: FutureWarning: `clean_up_tokenization_spaces` was not set. It will be set to `True` by default. This behavior will be depracted in transformers v4.45, and will be then set to `False` by default. For more details check this issue: https://github.com/huggingface/transformers/issues/31884
+  warnings.warn(
+Loaded pretrained model gpt2-small into HookedTransformer
+Loaded pretrained model gpt2-small into HookedTransformer
+/data/joan_velja/nn-modularity/interp-gains-gpt2small/model_analysis.py:43: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  model_nmod.load_state_dict(torch.load(PATHS["models"]["non_modular"], map_location=device))
+/data/joan_velja/nn-modularity/interp-gains-gpt2small/model_analysis.py:44: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  model_mod.load_state_dict(torch.load(PATHS["models"]["modular"], map_location=device))
+Moving model to device:  cuda
+36718
+  0%|          | 0/2 [00:00<?, ?it/s]  0%|          | 0/2 [00:00<?, ?it/s]
+Traceback (most recent call last):
+  File "/data/joan_velja/nn-modularity/interp-gains-gpt2small/model_analysis.py", line 106, in <module>
+    main()
+  File "/data/joan_velja/nn-modularity/interp-gains-gpt2small/model_analysis.py", line 101, in main
+    get_activations(args)
+  File "/data/joan_velja/nn-modularity/interp-gains-gpt2small/model_analysis.py", line 77, in get_activations
+    logits = model_nmod(data)
+             ^^^^^^^^^^^^^^^^
+  File "/data/joan_velja/miniconda3/envs/modularity/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1736, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/data/joan_velja/miniconda3/envs/modularity/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1747, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/data/joan_velja/miniconda3/envs/modularity/lib/python3.11/site-packages/transformer_lens/HookedTransformer.py", line 575, in forward
+    residual = block(
+               ^^^^^^
+  File "/data/joan_velja/miniconda3/envs/modularity/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1736, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/data/joan_velja/miniconda3/envs/modularity/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1747, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/data/joan_velja/miniconda3/envs/modularity/lib/python3.11/site-packages/transformer_lens/components/transformer_block.py", line 160, in forward
+    self.attn(
+  File "/data/joan_velja/miniconda3/envs/modularity/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1736, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/data/joan_velja/miniconda3/envs/modularity/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1747, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/data/joan_velja/miniconda3/envs/modularity/lib/python3.11/site-packages/transformer_lens/components/abstract_attention.py", line 217, in forward
+    attn_scores = self.calculate_attention_scores(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/data/joan_velja/miniconda3/envs/modularity/lib/python3.11/site-packages/transformer_lens/components/abstract_attention.py", line 413, in calculate_attention_scores
+    attn_scores = q_ @ k_ / self.attn_scale
+                  ~~~^~~~
+torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 48.00 GiB. GPU 0 has a total capacity of 79.32 GiB of which 41.48 GiB is free. Including non-PyTorch memory, this process has 37.83 GiB memory in use. Of the allocated memory 37.28 GiB is allocated by PyTorch, and 71.10 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://pytorch.org/docs/stable/notes/cuda.html#environment-variables)
+srun: error: compute-permanent-node-506: task 0: Exited with exit code 1
