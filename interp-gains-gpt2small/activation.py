@@ -89,29 +89,35 @@ def activation_analysis(args):
         return cov, mean_cov
     
     
-    def visualize(batch_):
+    def visualize(batch_, layer_idx):
         cov, mean_cov = covariance_matrix(batch_)
-        # plt.figure(figsize=(10,10))
-        # sns.heatmap(cov, cmap='hot', annot=True, fmt='g')
-        # plt.show()    
-        # plt.close()
+        plt.figure(figsize=(10,10))
+        sns.heatmap(cov, cmap="hot", annot=False)
+        plt.savefig(f"interp-gains-gpt2small/plots/covariance_matrix_{layer_idx}.png")
+        plt.close()
         plt.figure(figsize=(10,10))
         sns.heatmap(mean_cov, cmap='hot', annot=True, fmt='g')
-        plt.show()
+        plt.savefig(f"interp-gains-gpt2small/plots/mean_covariance_matrix_{layer_idx}.png")
         plt.close()
         
-    for files in os.listdir('interp-gains-gpt2small/data'):
+        
+    universal_dict = {}
+    
+    for files in tqdm(os.listdir('interp-gains-gpt2small/data')):
         if 'chunk0' in files:
+            print(f"The filename is {files}")
             batch = torch.load(f'interp-gains-gpt2small/data/{files}')
-            print(files)
-            break
+            for k,v in batch.items():
+                if k in universal_dict:
+                    universal_dict[k] = torch.cat([universal_dict[k], v], dim = 0)
+                else:
+                    universal_dict[k] = v
+            # break
+    # batch = torch.load('interp-gains-gpt2small/data/chunk0_batch6.pt')
     
-    for layer_idx, values in batch.items():
-        print(layer_idx, values.size())
-        break
-    
-    # visualize(batch[6])
-    # _ = covariance_matrix(batch[6])
+    for layer_idx in tqdm(range(12)):
+        visualize(universal_dict[layer_idx], layer_idx)
+        # _ = covariance_matrix(batch[6])
 
 
 
