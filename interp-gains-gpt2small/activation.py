@@ -76,13 +76,20 @@ def activation_analysis(args):
         centered = values - mean
         
         assert centered.size(1) == 1024
-        cluster1 = torch.mean(centered[:, :centered.size(1)//4], dim = 1).reshape(-1, 1)
-        cluster2 = torch.mean(centered[:, centered.size(1)//4:centered.size(1)//2], dim = 1).reshape(-1, 1)
-        cluster3 = torch.mean(centered[:, centered.size(1)//2:centered.size(1)*3//4], dim = 1).reshape(-1, 1)
-        cluster4 = torch.mean(centered[:, centered.size(1)*3//4:], dim = 1).reshape(-1, 1)
+        # cluster1 = torch.mean(centered[:, :centered.size(1)//4], dim = 1).reshape(-1, 1)
+        # cluster2 = torch.mean(centered[:, centered.size(1)//4:centered.size(1)//2], dim = 1).reshape(-1, 1)
+        # cluster3 = torch.mean(centered[:, centered.size(1)//2:centered.size(1)*3//4], dim = 1).reshape(-1, 1)
+        # cluster4 = torch.mean(centered[:, centered.size(1)*3//4:], dim = 1).reshape(-1, 1)
         
-        all_cluster = torch.cat([cluster1, cluster2, cluster3, cluster4], dim = 1)
-        assert all_cluster.size() == (centered.size(0), 4)
+        cluster1 = torch.mean(values[:, :values.size(1)//4], dim = 1).reshape(-1, 1)
+        cluster2 = torch.mean(values[:, values.size(1)//4:centered.size(1)//2], dim = 1).reshape(-1, 1)
+        cluster3 = torch.mean(values[:, values.size(1)//2:centered.size(1)*3//4], dim = 1).reshape(-1, 1)
+        cluster4 = torch.mean(values[:, values.size(1)*3//4:], dim = 1).reshape(-1, 1)
+        
+        all_cluster_ = torch.cat([cluster1, cluster2, cluster3, cluster4], dim = 1)
+        assert all_cluster_.size() == (centered.size(0), 4)
+        
+        all_cluster = all_cluster_ - all_cluster_.mean(dim = 0)
         
         cov = torch.matmul(centered.T, centered) / (centered.size(0) - 1)
         mean_cov = torch.matmul(all_cluster.T, all_cluster) / (centered.size(0) - 1)
