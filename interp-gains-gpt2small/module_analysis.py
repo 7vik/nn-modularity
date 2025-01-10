@@ -43,8 +43,11 @@ def intervention(args, index):
     
     def hook_fn(module, input, output):
         mod_output = output.clone()
-        # mod_output[:, index[0]:index[1], :] = 0
-        mod_output[:, :, :] = 0
+        if index == "baseline":
+            pass
+        else:
+            mod_output[:, index[0]:index[1], :] = 0
+        # mod_output[:, :, :] = 0
         output = mod_output
         return output
 
@@ -69,8 +72,13 @@ def intervention(args, index):
 
 def visualize(dictionary):
     plt.figure(figsize=(10, 5))
-    plt.bar(dictionary.keys(), dictionary.values())
-    plt.xlabel('Layer Index')
+    plt.plot(dictionary[0], label='Layer 1')
+    plt.plot(dictionary[1], label='Layer 2')
+    plt.plot(dictionary[2], label='Layer 3')
+    plt.plot(dictionary[3], label='Layer 4')
+    plt.plot(dictionary["baseline"], label='Baseline', color='gray', linestyle='--')
+    plt.legend()
+    plt.xlabel('Samples')
     plt.ylabel('Loss')
     plt.show()
     plt.close()
@@ -91,13 +99,28 @@ def main():
     index4 = [(1024//4)*3, 1024]
     
     layer_wise_loss_dict = {}
+    all_sample_loss = {}
     
-    for layer_idx in tqdm(range(12)):
-        args.num_layer = layer_idx
-        all_loss = intervention(args, index1)
-        layer_wise_loss_dict[layer_idx] = np.mean(np.array(all_loss))
+    all_sample_loss["baseline"] = intervention(args, "baseline")
     
-    visualize(layer_wise_loss_dict)
+    for i in tqdm(range(4)):
+        if i == 0:
+            all_sample_loss[i] = np.array(intervention(args, index1)) - np.array(all_sample_loss["baseline"])
+        elif i == 1:
+            all_sample_loss[i] = np.array(intervention(args, index2)) - np.array(all_sample_loss["baseline"])
+        elif i == 2:
+            all_sample_loss[i] = np.array(intervention(args, index3)) - np.array(all_sample_loss["baseline"])
+        else:
+            all_sample_loss[i] = np.array(intervention(args, index4)) - np.array(all_sample_loss["baseline"])
+    
+    # for layer_idx in tqdm(range(12)):
+    #     args.num_layer = layer_idx
+    #     all_loss = intervention(args, index1)
+    #     layer_wise_loss_dict[layer_idx] = np.mean(np.array(all_loss))
+    
+    # pprint(all_sample_loss)
+    
+    visualize(all_sample_loss)
     
 
 
