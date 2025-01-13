@@ -19,3 +19,6 @@ import pickle as pkl
 from argparse import ArgumentParser
 import numpy as np
 from pprint import pprint
+import warnings
+warnings.filterwarnings("ignore")
+import transformer_lens
