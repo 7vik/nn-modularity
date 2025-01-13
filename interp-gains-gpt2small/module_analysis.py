@@ -32,9 +32,11 @@ def intervention(args, index):
     
     It will be computed in two formats:
     
-    1. Switch off 1 module M, i.e. keep 3 modules on 
-    2. Switch off 3 modules, and keep 1 module M on
-    
+    1. Switch off 1 module M, i.e. keep 3 modules on - for one layer we can also use this, but could be minimal.
+    2. Switch off 3 modules, and keep 1 module M on - if the acc is reasonable we can have this only as internvention.
+
+    Do this for one layer 
+    For many layers we can focus on type 2 intervention.
     '''
     
     model_nmod, model_mod, tokenizer, device = config_(args)
@@ -50,8 +52,23 @@ def intervention(args, index):
 
     hook_ = model_mod.blocks[args.num_layer].mlp.hook_pre.register_forward_hook(hook_fn)
     
+    def analysis():
+        with open("interp-gains-gpt2small/data/cropped_dataset_topk1000_acc.pkl", "rb") as f:
+            samples = pkl.load(f)   
+        
+        correct = 0; total = 0
+        for sample_idx in tqdm(range(len(samples))):
+            sample = samples[sample_idx].to(device)
+            logits = model_mod(sample)
+            if int(sample[:,-1].item()) in [int(x) for x in logits[:,-1,:].topk(1000, dim = -1).indices.tolist()[0]]:
+                correct+=1
+            total+=1
+            
+            if sample_idx%100 == 0:
+                print(f"Accuracy: {correct/total}")
+        
+        return correct/total
     
-    # hook(index)
     
     def dataset_prepartion():
         correct = 0; total = 0
@@ -64,6 +81,7 @@ def intervention(args, index):
             logits = model_mod(data)
             # print([int(x) for x in logits[:,-1,:].topk(3, dim = -1).indices.tolist()[0]])
             # print(int(data[:,-1].item()))
+            # if data[:,-1].item() == logits.argmax(dim = -1).item():
             if int(data[:,-1].item()) in [int(x) for x in logits[:,-1,:].topk(1000, dim = -1).indices.tolist()[0]]:
                 correct+=1
                 samples.append(data)
@@ -75,9 +93,10 @@ def intervention(args, index):
             The accuracy of the model_mod is 1.5% on predicting the last token.
             So i figured to get the accuracy on top 3,5, and 10 tokens. 
             The accuracy for them are as follows:
-            3: 2.4%
-            100: 12%
-            1000: 54%
+            Top 1: 1.5% argmax() 
+            Top 3: 2.4% 
+            Top 100: 12%
+            Top 1000: 54%
             '''
             # all_loss.append(loss.item())
             if idx%100 == 0:
@@ -90,9 +109,10 @@ def intervention(args, index):
             pkl.dump(samples, f)
         
         return correct/total
-    
-    accuracy = dataset_prepartion()
-    print(f"The accuracy of the trained model is {accuracy}")
+
+    analysis()
+    # accuracy = dataset_prepartion()
+    # print(f"The accuracy of the trained model is {accuracy}")
     
 
 def visualize(dictionary):
@@ -118,7 +138,7 @@ def main():
     
     args = parser.parse_args()
     
-    index1 = [0, 1024//4]
+    index1 = [0, 1024//4*3]
     index2 = [1024//4, 1024//2]
     index3 = [1024//2, (1024//4)*3]
     index4 = [(1024//4)*3, 1024]
@@ -126,21 +146,23 @@ def main():
     layer_wise_loss_dict = {}
     all_sample_loss = {}
     
-    all_sample_loss["baseline"] = intervention(args, "baseline")
+    # all_sample_loss["baseline"] = intervention(args, "baseline")
     '''
     We should only process the dataset for which the trained model produces accurate output.
     '''
     
-    # for i in tqdm(range(4)):
-    #     if i == 0:
-    #         all_sample_loss[i] = np.array(intervention(args, index1)) - np.array(all_sample_loss["baseline"])
-    #     elif i == 1:
-    #         all_sample_loss[i] = np.array(intervention(args, index2)) - np.array(all_sample_loss["baseline"])
-    #     elif i == 2:
-    #         all_sample_loss[i] = np.array(intervention(args, index3)) - np.array(all_sample_loss["baseline"])
-    #     else:
-    #         all_sample_loss[i] = np.array(intervention(args, index4)) - np.array(all_sample_loss["baseline"])
+    for i in tqdm(range(4)):
+        if i == 0:
+            # intervention(args, index1)
+            pass
+        # elif i == 1:
+        #     intervention(args, index2)
+        # elif i == 2:
+        #     intervention(args, index3)
+        elif i == 3:
+            intervention(args, index4)
     
+    # Focusing Layers: 2,5,6,7,10
     # for layer_idx in tqdm(range(12)):
     #     args.num_layer = layer_idx
     #     all_loss = intervention(args, index1)
