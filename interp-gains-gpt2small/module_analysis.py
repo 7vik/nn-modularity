@@ -4,16 +4,14 @@ from __init__ import *
 def config_(args):
     model =  GPT2Model.from_pretrained('gpt2')
     
-    print(model)
-    
     model_nmod = HookedTransformer.from_pretrained('gpt2-small')
     model_mod = HookedTransformer.from_pretrained('gpt2-small')
     tokenizer = transformers.GPT2Tokenizer.from_pretrained('gpt2')
 
     device = torch.device(args.device)
 
-    model_nmod.load_state_dict(torch.load('interp-gains-gpt2small/data/models/wiki_non_modular_mlp_in_out.pt', map_location=device))
-    model_mod.load_state_dict(torch.load('interp-gains-gpt2small/data/models/wiki_fully_modular_mlp_in_out.pt', map_location=device))
+    model_nmod.load_state_dict(torch.load('interp-gains-gpt2small/data/models/wiki_non_modular_mlp_in_out.pt', map_location=device, weights_only=True))
+    model_mod.load_state_dict(torch.load('interp-gains-gpt2small/data/models/wiki_fully_modular_mlp_in_out.pt', map_location=device, weights_only=True))
 
     logging.basicConfig(filename = 'interp-gains-gpt2small/logs/model_analysis.log',
                         level=logging.INFO, 
@@ -44,30 +42,57 @@ def intervention(args, index):
     def hook_fn(module, input, output):
         mod_output = output.clone()
         if index == "baseline":
-            pass
+            return output
         else:
-            mod_output[:, index[0]:index[1], :] = 0
-        # mod_output[:, :, :] = 0
-        output = mod_output
-        return output
+            mod_output[:, :, index[0]:index[1]] = 0
+            output = mod_output
+            return output
 
     hook_ = model_mod.blocks[args.num_layer].mlp.hook_pre.register_forward_hook(hook_fn)
     
     
     # hook(index)
     
-    all_loss = []
-    
-    for idx, data_ in tqdm(enumerate(make_wiki_data_loader(tokenizer, batch_size=args.batch_size))):
-        data = data_['tokens'].to(device)
-        loss = model_mod(data, return_type = "loss")
-        all_loss.append(loss.item())
-        if idx == 100:
-            break
+    def dataset_prepartion():
+        correct = 0; total = 0
+        samples = []
+        for idx, data_ in enumerate(tqdm(make_wiki_data_loader(tokenizer, batch_size=args.batch_size), 
+                                    desc="Processing batches", 
+                                    total=len(make_wiki_data_loader(tokenizer, batch_size=args.batch_size)))):
+            
+            data = data_['tokens'].to(device)
+            logits = model_mod(data)
+            # print([int(x) for x in logits[:,-1,:].topk(3, dim = -1).indices.tolist()[0]])
+            # print(int(data[:,-1].item()))
+            if int(data[:,-1].item()) in [int(x) for x in logits[:,-1,:].topk(1000, dim = -1).indices.tolist()[0]]:
+                correct+=1
+                samples.append(data)
+            total+=1
+            
+
+            '''
+            The loss should be calculated as binary and only on last token.
+            The accuracy of the model_mod is 1.5% on predicting the last token.
+            So i figured to get the accuracy on top 3,5, and 10 tokens. 
+            The accuracy for them are as follows:
+            3: 2.4%
+            100: 12%
+            1000: 54%
+            '''
+            # all_loss.append(loss.item())
+            if idx%100 == 0:
+                print(f"Accuracy: {correct/total}")
+            
+        hook_.remove()
         
-    hook_.remove()
+        os.makedirs("interp-gains-gpt2small/data", exist_ok=True)
+        with open("interp-gains-gpt2small/data/cropped_dataset_topk1000_acc.pkl", "wb") as f:
+            pkl.dump(samples, f)
+        
+        return correct/total
     
-    return all_loss
+    accuracy = dataset_prepartion()
+    print(f"The accuracy of the trained model is {accuracy}")
     
 
 def visualize(dictionary):
@@ -102,25 +127,28 @@ def main():
     all_sample_loss = {}
     
     all_sample_loss["baseline"] = intervention(args, "baseline")
+    '''
+    We should only process the dataset for which the trained model produces accurate output.
+    '''
     
-    for i in tqdm(range(4)):
-        if i == 0:
-            all_sample_loss[i] = np.array(intervention(args, index1)) - np.array(all_sample_loss["baseline"])
-        elif i == 1:
-            all_sample_loss[i] = np.array(intervention(args, index2)) - np.array(all_sample_loss["baseline"])
-        elif i == 2:
-            all_sample_loss[i] = np.array(intervention(args, index3)) - np.array(all_sample_loss["baseline"])
-        else:
-            all_sample_loss[i] = np.array(intervention(args, index4)) - np.array(all_sample_loss["baseline"])
+    # for i in tqdm(range(4)):
+    #     if i == 0:
+    #         all_sample_loss[i] = np.array(intervention(args, index1)) - np.array(all_sample_loss["baseline"])
+    #     elif i == 1:
+    #         all_sample_loss[i] = np.array(intervention(args, index2)) - np.array(all_sample_loss["baseline"])
+    #     elif i == 2:
+    #         all_sample_loss[i] = np.array(intervention(args, index3)) - np.array(all_sample_loss["baseline"])
+    #     else:
+    #         all_sample_loss[i] = np.array(intervention(args, index4)) - np.array(all_sample_loss["baseline"])
     
     # for layer_idx in tqdm(range(12)):
     #     args.num_layer = layer_idx
     #     all_loss = intervention(args, index1)
-    #     layer_wise_loss_dict[layer_idx] = np.mean(np.array(all_loss))
+        # layer_wise_loss_dict[layer_idx] = np.mean(np.array(all_loss))
     
     # pprint(all_sample_loss)
     
-    visualize(all_sample_loss)
+    # visualize(all_sample_loss)
     
 
 
