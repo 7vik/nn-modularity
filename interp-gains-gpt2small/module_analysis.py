@@ -28,7 +28,7 @@ def nps(arr_):
     pprint(np.array(arr_).shape)
 
 
-def intervention(args, index):
+def intervention(args, index, module):
     '''
     We will be limiting our intervention on the modules for just 3 layers.
     Based on these intervention we will be building our data.
@@ -61,11 +61,13 @@ def intervention(args, index):
     
     
     
-    def analysis():
-        with open("interp-gains-gpt2small/data/cropped_dataset_topk1000_acc.pkl", "rb") as f:
+    def analysis(module):
+        with open("interp-gains-gpt2small/data/cropped_dataset_last_token_layer6.pkl", "rb") as f:
             samples = pkl.load(f)   
         
         correct = 0; total = 0
+        prediction = []
+        correct_samples = []
         for sample_idx in tqdm(range(len(samples))):
             sample = samples[sample_idx].to(device)
             logits = model_mod(sample)
@@ -82,13 +84,70 @@ def intervention(args, index):
             # print(" ".join(predicted_string))
             # equals = (sample[:,1:].to("cpu") == logits[:,1:-1,:].argmax(dim = -1).to("cpu")).float().mean()  # -> method of Satvik.
             if sample[:,-1].item() == logits[:,-2,:].argmax(dim = -1).item(): # -> my improved method.
-                correct += 1
-            total+=1
-            if sample_idx%100 == 0 and sample_idx != 0:
-                print(f"Accuracy: {correct/total}")    
-        return correct/total
+                prediction.append(1)
+                correct_samples.append(sample)
+            else:
+                prediction.append(0)
+
+        with open(f"interp-gains-gpt2small/data/prediction_type1_layer6_{module}.pkl", "wb") as f:
+            pkl.dump(prediction, f)
+        
+        with open(f"interp-gains-gpt2small/data/samples_type1_layer6_{module}.pkl", "wb") as f:
+            pkl.dump(correct_samples, f)    
+        # return correct/total
     
     
+    def final_analysis():
+        
+        final_dict = {}
+        mean_acc = []
+        
+        plt.figure(figsize=(10, 5))
+        
+        for module in ["mod1", "mod2", "mod3", "mod4"]:
+            
+            with open(f"interp-gains-gpt2small/data/prediction_type1_layer6_{module}.pkl", "rb") as f:
+                prediction = pkl.load(f)
+            
+            final_dict[module] = prediction
+            
+            mean_acc.append(np.mean(prediction))
+        
+        plt.plot(mean_acc, marker="s", color = "orange", markersize = 10)
+        plt.title("Mean Accuracy")
+        
+        plt.legend()
+        plt.grid(True)
+        plt.show()
+        plt.close()
+        
+        # visualize(final_dict)
+        stacked_arrays = np.vstack([final_dict["mod1"],
+                                    final_dict["mod2"],
+                                    final_dict["mod3"],
+                                    final_dict["mod4"]])
+
+        # Find indices where all arrays have a 0
+        common_zero_indices = np.where(np.all(stacked_arrays == 0, axis=0))[0]
+
+        # Plotting
+        plt.figure(figsize=(10, 2))
+        plt.plot(final_dict['mod1'], label='Module 1', marker='o')
+        plt.plot(final_dict['mod2'], label='Module 2', marker='s')
+        plt.plot(final_dict['mod3'], label='Module 3', marker='^')
+        plt.plot(final_dict['mod4'], label='Module 4', marker='x')
+
+        # Highlight common zero indices
+        for idx in common_zero_indices:
+            plt.axvline(x=idx, color='r', linestyle='--', alpha=0.5)
+
+        plt.xlabel('Index')
+        plt.ylabel('Value')
+        plt.title('Common Zero Indices in Binary Arrays')
+        plt.legend()
+        plt.grid(True)
+        plt.show()
+        plt.close()
     
     
     def dataset_prepartion(args):
@@ -132,18 +191,20 @@ def intervention(args, index):
         
         return correct/total
 
-    # analysis()
-    accuracy = dataset_prepartion(args)
-    print(f"The accuracy of the trained model is {accuracy}")
+    # accuracy = dataset_prepartion(args)
+    # print(f"The accuracy of the trained model is {accuracy}")
     
+    # _ = analysis(module)
+    
+    final_analysis()
 
 def visualize(dictionary):
     plt.figure(figsize=(10, 5))
-    plt.plot(dictionary[0], label='Layer 1')
-    plt.plot(dictionary[1], label='Layer 2')
-    plt.plot(dictionary[2], label='Layer 3')
-    plt.plot(dictionary[3], label='Layer 4')
-    plt.plot(dictionary["baseline"], label='Baseline', color='gray', linestyle='--')
+    plt.plot(dictionary["mod1"], label='Layer 1')
+    plt.plot(dictionary["mod2"], label='Layer 2')
+    plt.plot(dictionary["mod3"], label='Layer 3')
+    plt.plot(dictionary["mod4"], label='Layer 4')
+    # plt.plot(dictionary["baseline"], label='Baseline', color='gray', linestyle='--')
     plt.legend()
     plt.xlabel('Samples')
     plt.ylabel('Loss')
@@ -168,24 +229,24 @@ def main():
     layer_wise_loss_dict = {}
     all_sample_loss = {}
     
-    all_sample_loss["baseline"] = intervention(args, "baseline")
+    # all_sample_loss["baseline"] = intervention(args, "baseline")
     '''
     We should only process the dataset for which the trained model produces accurate output.
     '''
     
-    # for i in tqdm(range(4)):
-    #     if i == 0:
-            # print(f"Intervention using the index {i} on layer {args.num_layer}")
-    #         intervention(args, index1)
-    #     elif i == 1:
-            # print(f"Intervention using the index {i} on layer {args.num_layer}")
-    #         intervention(args, index2)
-    #     elif i == 2:
-            # print(f"Intervention using the index {i} on layer {args.num_layer}")
-    #         intervention(args, index3)
-    #     elif i == 3:
-            # print(f"Intervention using the index {i} on layer {args.num_layer}")
-    #         intervention(args, index4)
+    for i in tqdm(range(4)):
+        if i == 0:
+            print(f"Intervention using the index {i} on layer {args.num_layer}")
+            intervention(args, index1, module = "mod1")
+        # elif i == 1:
+        #     print(f"Intervention using the index {i} on layer {args.num_layer}")
+        #     intervention(args, index2, module = "mod2")
+        # elif i == 2:
+        #     print(f"Intervention using the index {i} on layer {args.num_layer}")
+        #     intervention(args, index3, module = "mod3")
+        # elif i == 3:
+        #     print(f"Intervention using the index {i} on layer {args.num_layer}")
+        #     intervention(args, index4, module="mod4")
     
     # Focusing Layers: 2,5,6,7,10
     # for layer_idx in tqdm(range(12)):
