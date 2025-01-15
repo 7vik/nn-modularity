@@ -138,7 +138,7 @@ def main():
     
     args = parser.parse_args()
     
-    index1 = [0, 1024//4*3]
+    index1 = [0, 1024//4]
     index2 = [1024//4, 1024//2]
     index3 = [1024//2, (1024//4)*3]
     index4 = [(1024//4)*3, 1024]
