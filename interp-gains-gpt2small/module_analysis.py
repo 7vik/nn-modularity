@@ -71,19 +71,9 @@ def intervention(args, index, module, func = "analysis"):
         for sample_idx in tqdm(range(len(samples))):
             sample = samples[sample_idx].to(device)
             logits = model_mod(sample)
-            # if int(sample[:,-1].item()) in [int(x) for x in logits[:,-1,:].topk(1000, dim = -1).indices.tolist()[0]]:
-            #     correct += 1
-            # total+=1
-
-            # print(tokenizer.decode(sample[0].tolist()))
-            # print(f"\n\n\n\n")
             predicted_string = []
-            # Decode each sequence individually
-            # for seq in logits.argmax(dim=-1).tolist():
-            #     predicted_string.append(tokenizer.decode(seq))
-            # print(" ".join(predicted_string))
-            # equals = (sample[:,1:].to("cpu") == logits[:,1:-1,:].argmax(dim = -1).to("cpu")).float().mean()  # -> method of Satvik.
-            if sample[:,-1].item() == logits[:,-2,:].argmax(dim = -1).item(): # -> my improved method.
+            # comparing second last token of generated sentence with last token of ground truth word
+            if sample[:,-1].item() == logits[:,-2,:].argmax(dim = -1).item(): 
                 prediction.append(1)
                 correct_samples.append(sample)
             else:
@@ -94,7 +84,6 @@ def intervention(args, index, module, func = "analysis"):
         
         with open(f"interp-gains-gpt2small/data/samples_{args.type_of_intervention}_layer{args.num_layer}_{module}.pkl", "wb") as f:
             pkl.dump(correct_samples, f)    
-        # return correct/total
     
     
     def final_analysis(args):
@@ -128,11 +117,16 @@ def intervention(args, index, module, func = "analysis"):
                                     final_dict["mod2"],
                                     final_dict["mod3"],
                                     final_dict["mod4"]])
-
-        # Find indices where all arrays have a 0
-        common_zero_indices = np.where(np.all(stacked_arrays == 0, axis=0))[0]
         
         
+        '''
+        In order to see on which samples does the model give bad accuracy
+        we subtract the binary list of correct vs incorrect label with 1.
+        As a result, the sentence with incorrect label has 1 and correct sentence as 0, 
+        and we display the effect these incorrect 1 on graph by removing the common sentence 
+        for which all the modules gave correct prediction or in other terms removing with condition:
+        if (a == 0 and b == 0 and c == 0 and d == 0) then remove!
+        '''
         
         filtered_lists = [
             (a, b, c, d)
@@ -154,10 +148,6 @@ def intervention(args, index, module, func = "analysis"):
         p3 = plt.bar(x, list3_filtered, label='Module 3', width=0.5, bottom=np.add(list1_filtered, list2_filtered))
         p4 = plt.bar(x, list4_filtered, label='Module 4', width=0.5, bottom=np.add(list1_filtered, np.add(list2_filtered, list3_filtered)))
 
-        # Highlight common zero indices
-        # for idx in common_zero_indices:
-        #     plt.axvline(x=idx, color='r', linestyle='--', alpha=0.5, label='Common Zero Indices')
-
         plt.xlabel('Sample Index', size=12)
         plt.ylabel('Effect of Module', size=12)
         plt.title('Spike denotes when a module is turned off the accuracy for sample goes down', size=16)
@@ -176,15 +166,11 @@ def intervention(args, index, module, func = "analysis"):
             
             data = data_['tokens'].to(device)
             logits = model_mod(data)
-            # print([int(x) for x in logits[:,-1,:].topk(3, dim = -1).indices.tolist()[0]])
-            # print(int(data[:,-1].item()))
-            # if data[:,-1].item() == logits.argmax(dim = -1).item():
             if data[:,-1].item() == logits[:,-2,:].argmax(dim = -1).item():
                 correct+=1
                 samples.append(data)
             total+=1
             
-            # all_loss.append(loss.item())
             if idx%100 == 0:
                 print(f"Accuracy: {correct/total}")
             
@@ -195,9 +181,6 @@ def intervention(args, index, module, func = "analysis"):
             pkl.dump(samples, f)
         
         return correct/total
-
-    # accuracy = dataset_prepartion(args)
-    # print(f"The accuracy of the trained model is {accuracy}")
     
     if func == "analysis":
         _ = analysis(args,module)
@@ -212,7 +195,6 @@ def visualize(dictionary):
     plt.plot(dictionary["mod2"], label='Module 2')
     plt.plot(dictionary["mod3"], label='Module 3')
     plt.plot(dictionary["mod4"], label='Module 4')
-    # plt.plot(dictionary["baseline"], label='Baseline', color='gray', linestyle='--')
     plt.legend()
     plt.xlabel('Samples')
     plt.ylabel('Loss')
@@ -264,16 +246,7 @@ def main():
             print(f"Intervention using the index {i} on layer {args.num_layer}")
             intervention(args, index4, module="mod4")
             intervention(args, index4, module="mod4", func = "final_analysis")
-    
-    # Focusing Layers: 2,5,6,7,10
-    # for layer_idx in tqdm(range(12)):
-    #     args.num_layer = layer_idx
-    #     all_loss = intervention(args, index1)
-        # layer_wise_loss_dict[layer_idx] = np.mean(np.array(all_loss))
-    
-    # pprint(all_sample_loss)
-    
-    # visualize(all_sample_loss)
+
 
 
 if __name__ == '__main__':
