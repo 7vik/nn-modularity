@@ -28,7 +28,7 @@ def nps(arr_):
     pprint(np.array(arr_).shape)
 
 
-def intervention(args, index, module):
+def intervention(args, index, module, func = "analysis"):
     '''
     We will be limiting our intervention on the modules for just 3 layers.
     Based on these intervention we will be building our data.
@@ -36,24 +36,27 @@ def intervention(args, index, module):
     It will be computed in two formats:
     
     1. Switch off 1 module M, i.e. keep 3 modules on - for one layer we can also use this, but could be minimal.
-    2. Switch off 3 modules, and keep 1 module M on - if the acc is reasonable we can have this only as internvention.
+    2. Switch off 3 modules, and keep 1 module M on - if the acc is reasonable we can have this only as intervention.
 
     Do type 1 intervention for one layer, i.e. Layer 6.
     For many layers we can focus on type 2 intervention.
-    
-    #TODO: Make graphs per data point also. if it does not happen then we can have a single graph showcasign the overlapping data for which the output was wrong.
-    #TODO: Make bar graph of accuracy for each type of intervention on each module.
+
+    #TODO: Make the graph of Type-1 intervention for all layers-2,5,6,7,10.
     #TODO: Repeat the above process for type 2 intervention.
     '''
     
     model_nmod, model_mod, tokenizer, device = config_(args)
-    
+
     def hook_fn(module, input, output):
         mod_output = output.clone()
         if index == "baseline":
             return output
         else:
-            mod_output[:, :, index[0]:index[1]] = 0
+            if len(index) == 2:
+                mod_output[:, :, index[0]:index[1]] = 0
+            elif len(index) == 4:
+                mod_output[:, :, index[0]:index[1]] = 0
+                mod_output[:, :, index[2]:index[3]] = 0
             output = mod_output
             return output
 
@@ -61,8 +64,8 @@ def intervention(args, index, module):
     
     
     
-    def analysis(module):
-        with open("interp-gains-gpt2small/data/cropped_dataset_last_token_layer6.pkl", "rb") as f:
+    def analysis(args,module):
+        with open(f"interp-gains-gpt2small/data/cropped_dataset_last_token.pkl", "rb") as f:
             samples = pkl.load(f)   
         
         correct = 0; total = 0
@@ -89,15 +92,15 @@ def intervention(args, index, module):
             else:
                 prediction.append(0)
 
-        with open(f"interp-gains-gpt2small/data/prediction_type1_layer6_{module}.pkl", "wb") as f:
+        with open(f"interp-gains-gpt2small/data/prediction_{args.type_of_intervention}_layer{args.num_layer}_{module}.pkl", "wb") as f:
             pkl.dump(prediction, f)
         
-        with open(f"interp-gains-gpt2small/data/samples_type1_layer6_{module}.pkl", "wb") as f:
+        with open(f"interp-gains-gpt2small/data/samples_{args.type_of_intervention}_layer{args.num_layer}_{module}.pkl", "wb") as f:
             pkl.dump(correct_samples, f)    
         # return correct/total
     
     
-    def final_analysis():
+    def final_analysis(args):
         
         final_dict = {}
         mean_acc = []
@@ -106,7 +109,7 @@ def intervention(args, index, module):
         
         for module in ["mod1", "mod2", "mod3", "mod4"]:
             
-            with open(f"interp-gains-gpt2small/data/prediction_type1_layer6_{module}.pkl", "rb") as f:
+            with open(f"interp-gains-gpt2small/data/prediction_{args.type_of_intervention}_layer{args.num_layer}_{module}.pkl", "rb") as f:
                 prediction = pkl.load(f)
             
             final_dict[module] = prediction
@@ -114,11 +117,13 @@ def intervention(args, index, module):
             mean_acc.append(np.mean(prediction))
         
         plt.plot(mean_acc, marker="s", color = "orange", markersize = 10)
-        plt.title("Mean Accuracy")
+        plt.title("Mean Accuracy", size = 16)
+        plt.xlabel("Modules", size = 12)
+        plt.ylabel("Accuracy", size = 12)
         
         plt.legend()
         plt.grid(True)
-        plt.show()
+        plt.savefig(f"interp-gains-gpt2small/plots/{args.type_of_intervention}_layer{args.num_layer}_accuracy.png", dpi = 300)
         plt.close()
         
         # visualize(final_dict)
@@ -129,24 +134,39 @@ def intervention(args, index, module):
 
         # Find indices where all arrays have a 0
         common_zero_indices = np.where(np.all(stacked_arrays == 0, axis=0))[0]
+        
+        
+        
+        filtered_lists = [
+            (a, b, c, d)
+            for a, b, c, d in zip(np.ones(np.array(final_dict['mod1']).shape)- final_dict['mod1'], 
+                                np.ones(np.array(final_dict['mod1']).shape)- final_dict['mod2'],
+                                np.ones(np.array(final_dict['mod1']).shape)- final_dict['mod3'],
+                                np.ones(np.array(final_dict['mod1']).shape)- final_dict['mod4'])
+            if not (a == 0 and b == 0 and c == 0 and d == 0)
+        ]
+
+        # Unzipping the filtered tuples back into separate lists
+        list1_filtered, list2_filtered, list3_filtered, list4_filtered = map(list, zip(*filtered_lists))
 
         # Plotting
-        plt.figure(figsize=(10, 2))
-        plt.plot(final_dict['mod1'], label='Module 1', marker='o')
-        plt.plot(final_dict['mod2'], label='Module 2', marker='s')
-        plt.plot(final_dict['mod3'], label='Module 3', marker='^')
-        plt.plot(final_dict['mod4'], label='Module 4', marker='x')
+        plt.subplots(figsize=(20, 5))
+        x = np.arange(len(list1_filtered))
+        p1 = plt.bar(x, list1_filtered, label='Module 1', width=0.5)
+        p2 = plt.bar(x, list2_filtered, label='Module 2', width=0.5, bottom=list1_filtered)
+        p3 = plt.bar(x, list3_filtered, label='Module 3', width=0.5, bottom=np.add(list1_filtered, list2_filtered))
+        p4 = plt.bar(x, list4_filtered, label='Module 4', width=0.5, bottom=np.add(list1_filtered, np.add(list2_filtered, list3_filtered)))
 
         # Highlight common zero indices
-        for idx in common_zero_indices:
-            plt.axvline(x=idx, color='r', linestyle='--', alpha=0.5)
+        # for idx in common_zero_indices:
+        #     plt.axvline(x=idx, color='r', linestyle='--', alpha=0.5, label='Common Zero Indices')
 
-        plt.xlabel('Index')
-        plt.ylabel('Value')
-        plt.title('Common Zero Indices in Binary Arrays')
+        plt.xlabel('Sample Index', size=12)
+        plt.ylabel('Effect of Module', size=12)
+        plt.title('Spike denotes when a module is turned off the accuracy for sample goes down', size=16)
         plt.legend()
         plt.grid(True)
-        plt.show()
+        plt.savefig(f"interp-gains-gpt2small/plots/{args.type_of_intervention}_layer{args.num_layer}_effect.png", dpi = 300)
         plt.close()
     
     
@@ -167,18 +187,6 @@ def intervention(args, index, module):
                 samples.append(data)
             total+=1
             
-
-            '''
-            The loss should be calculated as binary and only on last token.
-            The accuracy of the model_mod is 1.5% on predicting the last token.
-            So i figured to get the accuracy on top 3,5, and 10 tokens. 
-            The accuracy for them are as follows:
-            Top 1: 1.5% argmax() 
-            Top 3: 2.4% 
-            Top 100: 12%
-            Top 1000: 54%
-            
-            '''
             # all_loss.append(loss.item())
             if idx%100 == 0:
                 print(f"Accuracy: {correct/total}")
@@ -186,7 +194,7 @@ def intervention(args, index, module):
         hook_.remove()
         
         os.makedirs("interp-gains-gpt2small/data", exist_ok=True)
-        with open(f"interp-gains-gpt2small/data/cropped_dataset_last_token_layer{args.num_layer}.pkl", "wb") as f:
+        with open(f"interp-gains-gpt2small/data/cropped_dataset_last_token.pkl", "wb") as f:
             pkl.dump(samples, f)
         
         return correct/total
@@ -194,16 +202,19 @@ def intervention(args, index, module):
     # accuracy = dataset_prepartion(args)
     # print(f"The accuracy of the trained model is {accuracy}")
     
-    # _ = analysis(module)
+    if func == "analysis":
+        _ = analysis(args,module)
+        
+    elif func == "final_analysis":
+        final_analysis(args)
     
-    final_analysis()
 
 def visualize(dictionary):
     plt.figure(figsize=(10, 5))
-    plt.plot(dictionary["mod1"], label='Layer 1')
-    plt.plot(dictionary["mod2"], label='Layer 2')
-    plt.plot(dictionary["mod3"], label='Layer 3')
-    plt.plot(dictionary["mod4"], label='Layer 4')
+    plt.plot(dictionary["mod1"], label='Module 1')
+    plt.plot(dictionary["mod2"], label='Module 2')
+    plt.plot(dictionary["mod3"], label='Module 3')
+    plt.plot(dictionary["mod4"], label='Module 4')
     # plt.plot(dictionary["baseline"], label='Baseline', color='gray', linestyle='--')
     plt.legend()
     plt.xlabel('Samples')
@@ -218,35 +229,44 @@ def main():
     parser.add_argument('--device', type=str, default='cuda')
     parser.add_argument('--batch_size', type=int, default=1)
     parser.add_argument('--num_layer', type=int, default=6)
+    parser.add_argument('--type_of_intervention', type=str, required=True)
     
     args = parser.parse_args()
     
-    index1 = [0, 1024//4]
-    index2 = [1024//4, 1024//2]
-    index3 = [1024//2, (1024//4)*3]
-    index4 = [(1024//4)*3, 1024]
+    if args.type_of_intervention == "type1":
+        # 1024//4 = 256
+        index1 = [0, 256]
+        index2 = [256, 256*2]
+        index3 = [256*2, 256*3]
+        index4 = [256*3, None]
+    
+    elif args.type_of_intervention == "type2":
+        index1 = [256, 256*3, 256*3,  None] # switch on just 1st module
+        index2 = [0, 256, 256*2, None] # switch on just 2nd module
+        index3 = [0, 256*2, 256*3, None] # switch on just 3rd module
+        index4 = [0, 256*3, None, None] # switch on just 4th module
+        
+    
     
     layer_wise_loss_dict = {}
     all_sample_loss = {}
     
-    # all_sample_loss["baseline"] = intervention(args, "baseline")
-    '''
-    We should only process the dataset for which the trained model produces accurate output.
-    '''
+    
     
     for i in tqdm(range(4)):
         if i == 0:
             print(f"Intervention using the index {i} on layer {args.num_layer}")
             intervention(args, index1, module = "mod1")
-        # elif i == 1:
-        #     print(f"Intervention using the index {i} on layer {args.num_layer}")
-        #     intervention(args, index2, module = "mod2")
-        # elif i == 2:
-        #     print(f"Intervention using the index {i} on layer {args.num_layer}")
-        #     intervention(args, index3, module = "mod3")
-        # elif i == 3:
-        #     print(f"Intervention using the index {i} on layer {args.num_layer}")
-        #     intervention(args, index4, module="mod4")
+        elif i == 1:
+            print(f"Intervention using the index {i} on layer {args.num_layer}")
+            intervention(args, index2, module = "mod2")
+        elif i == 2:
+            print(f"Intervention using the index {i} on layer {args.num_layer}")
+            intervention(args, index3, module = "mod3")
+        elif i == 3:
+            print(f"Intervention using the index {i} on layer {args.num_layer}")
+            intervention(args, index4, module="mod4")
+            intervention(args, index4, module="mod4", func = "final_analysis")
     
     # Focusing Layers: 2,5,6,7,10
     # for layer_idx in tqdm(range(12)):
@@ -257,7 +277,6 @@ def main():
     # pprint(all_sample_loss)
     
     # visualize(all_sample_loss)
-    
 
 
 if __name__ == '__main__':
