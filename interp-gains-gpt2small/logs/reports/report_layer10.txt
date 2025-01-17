@@ -1,0 +1,63 @@
+Here’s a detailed and specific breakdown of the differences among the four files, which can be used to cluster them into distinct categories:
+
+File 1: samples_type2_layer10_mod1.txt
+	•	Content Focus:
+	•	Primarily focuses on biographies, historical events, and labor activism.
+	•	Includes references to political movements like the Independent Labour Party (ILP) and individuals involved in suffragette movements.
+	•	Mentions key historical figures and events related to labor rights and women’s activism.
+	•	Structure:
+	•	Organized with biographical sections and headings such as = = Biography = =, = = = Childhood and family = = =, and = = = Early career = = =.
+	•	Follows a linear narrative detailing historical struggles and activism.
+	•	Placeholder Tokens:
+	•	Frequent use of <unk> tokens, especially in places where names or locations are described.
+
+File 2: samples_type2_layer10_mod2.txt
+	•	Content Focus:
+	•	Similar to File 1 in terms of biographies but diverges with additional content on cultural artifacts and historical exhibitions.
+	•	Includes mentions of helmets, public displays, and institutions like the Royal Academy of Arts.
+	•	Describes cultural events and exhibitions alongside biographical details.
+	•	Structure:
+	•	Starts with biographical narratives and transitions to discussions on artifacts.
+	•	Sections are labeled with headings like = = Biography = = and = = <unk> = =.
+	•	Placeholder Tokens:
+	•	Moderate use of <unk> tokens, primarily in artifact descriptions.
+
+File 3: samples_type2_layer10_mod3.txt
+	•	Content Focus:
+	•	Shifts significantly to fictional narratives and game lore.
+	•	Discusses video game characters, such as Liu Kang from the Mortal Kombat series.
+	•	Details include character backstories, relationships, game mechanics, and fictional timelines.
+	•	Structure:
+	•	Organized under headings like = Liu Kang = and = = Appearances = =.
+	•	Focused sections on video game titles and in-game events.
+	•	Placeholder Tokens:
+	•	Frequent <unk> tokens, especially in game-specific terms or unrecognized lore.
+
+File 4: samples_type2_layer10_mod4.txt
+	•	Content Focus:
+	•	Combines elements of biographical history and fictional content with a focus on professional wrestling and cultural narratives.
+	•	Covers wrestling personas, events, and personal life details (e.g., Helms’ career as “The Hurricane”).
+	•	Includes narratives about the development and repertoire of opera companies.
+	•	Structure:
+	•	Alternates between wrestling and opera-related content.
+	•	Sections organized under headings like = = Fully professional : 1970s = =.
+	•	Placeholder Tokens:
+	•	Moderate <unk> token usage, appearing in wrestling or cultural contexts.
+
+Clustering
+
+Based on these differences, the files can be categorized into the following clusters:
+	1.	Cluster 1: Historical and Biographical Narratives
+	•	Includes: File 1 and partially File 2.
+	•	Focus: Labor activism, biographies, and cultural artifacts.
+	2.	Cluster 2: Cultural and Artifact-Oriented Content
+	•	Includes: File 2.
+	•	Focus: Historical artifacts, public exhibitions, and their significance.
+	3.	Cluster 3: Fictional and Game Lore
+	•	Includes: File 3.
+	•	Focus: Video game characters, storylines, and mechanics.
+	4.	Cluster 4: Mixed Media (Wrestling and Opera)
+	•	Includes: File 4.
+	•	Focus: Professional wrestling narratives and opera company histories.
+
+This analysis highlights the distinctive focus and features of each file, facilitating a clear clustering strategy. Let me know if you need further insights!
