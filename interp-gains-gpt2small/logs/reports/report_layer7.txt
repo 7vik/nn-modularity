@@ -1,0 +1,41 @@
+Here’s a detailed analysis highlighting the differences that allow the files to be categorized into four distinct clusters:
+
+Cluster 1: Transportation and Infrastructure
+	•	File: samples_type2_layer7_mod1.txt
+	•	Key Characteristics:
+	•	Focuses on transportation infrastructure and historical development of roadways.
+	•	Uses terms like “annual average daily traffic,” “MDOT,” “interchange,” and “roundabouts.”
+	•	Contains specific statistics and factual data, such as vehicle counts and dates for construction or rerouting of highways.
+	•	Structured in a report-like manner with emphasis on technical and logistical aspects of infrastructure.
+
+Cluster 2: Biography and Social Movements
+	•	File: samples_type2_layer7_mod2.txt
+	•	Key Characteristics:
+	•	Focuses on the life and achievements of an individual, specifically Stephen (a suffragette and labor activist).
+	•	Includes biographical sections such as “Childhood and family,” “Early career,” and “Later life.”
+	•	Discusses broader historical contexts, including labor movements, political activism, and social issues.
+	•	Narrative style emphasizes personal struggles and societal contributions.
+
+Cluster 3: Fictional Narratives and Media
+	•	File: samples_type2_layer7_mod3.txt
+	•	Key Characteristics:
+	•	Primarily focuses on fictional characters from media, such as Liu Kang from the “Mortal Kombat” series.
+	•	Provides detailed descriptions of character backstories, roles in their respective universes, and appearances in games, movies, and merchandise.
+	•	Includes narrative-driven content with a focus on entertainment and popular culture.
+	•	Structured around individual characters, their development, and their reception.
+
+Cluster 4: Literary Analysis and Poetics
+	•	File: samples_type2_layer7_mod4.txt
+	•	Key Characteristics:
+	•	Focuses on detailed literary analysis, especially related to poetry and poetic devices.
+	•	Discusses elements like assonance, meter, vowel patterns, and stylistic features, with examples from poems such as “Ode to a Nightingale.”
+	•	Analytical tone with an emphasis on structure and the artistic significance of language patterns.
+	•	Includes comparisons of linguistic features across poems and their implications.
+
+Summary of Clusters:
+	1.	Cluster 1 (Infrastructure): File 1, characterized by technical and transportation-related content.
+	2.	Cluster 2 (Biography): File 2, characterized by personal and societal historical narratives.
+	3.	Cluster 3 (Fictional Media): File 3, centered on fictional characters and media descriptions.
+	4.	Cluster 4 (Literary Analysis): File 4, focused on poetic and literary critique.
+
+Each file has distinct themes and styles that make them naturally separable into these clusters. Let me know if you need further exploration or visualization of these differences.
