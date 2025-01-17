@@ -40,9 +40,6 @@ def intervention(args, index, module, func = "analysis"):
 
     Do type 1 intervention for one layer, i.e. Layer 6.
     For many layers we can focus on type 2 intervention.
-
-    #TODO: Make the graph of Type-1 intervention for all layers-2,5,6,7,10.
-    #TODO: Repeat the above process for type 2 intervention.
     '''
     
     model_nmod, model_mod, tokenizer, device = config_(args)
