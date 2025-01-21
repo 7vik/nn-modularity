@@ -27,14 +27,24 @@ def activation_analysis():
           cov       : [1024 x 1024] covariance
           mean_cov  : [4 x 4] covariance of the 4 cluster means
         """
-        # 1) L2 norm across the last dimension => shape [N, 1024, seq_len] -> [N, 1024]
-        #    In your script, it's actually taking norm along dim=-1. 
-        #    We'll stick to your original code literally:
+        # 1) L2 norm across the last dimension => shape [bs, 1024 = seq_len, 3072 = d_model] -> [bs, 1024]
         print("batch_ shape:", batch_.shape)
         values = torch.norm(batch_, dim=-1)  # shape: [N] if batch_ is [N, 1024]
         # 2) Center the data (1D)
         mean = values.mean(dim=0)
         centered = values - mean  # shape: [N]
+
+        # Alternative: (bs, seq_len, d_model) tensor
+        # 1) flatten over 0,1 --> N = bs x seq_len --> 2D tensor (N, d_model) --> cov outer product 
+        # N likely very big (128 * 1024)
+        # matmul implies (centered.T, centered) --> N x N x 3072
+
+        # Nandi's suggestion: 
+        # batch_ = batch_[:, -1, :] shape : (bs = 128, 1, 3072)
+
+        # cov = (centered.T, centered) = ((3072,128) x (128, 3072)) = (3072,3072)
+
+        # Sampling from bs=128
         
         # 3) Split into clusters
         cluster1 = torch.mean(centered[:, :256], dim=1).reshape(-1, 1)
@@ -43,7 +53,7 @@ def activation_analysis():
         cluster4 = torch.mean(centered[:, 768:], dim=1).reshape(-1, 1)
         all_cluster = torch.cat([cluster1, cluster2, cluster3, cluster4], dim=1)
         # 4) Full covariance
-        cov = torch.matmul(centered.T, centered) / (centered.size(0) - 1)
+        cov = torch.matmul(centered.T, centered) / (centered.size(0) - 1)  # shape: [1024, 1024] --> ideal: [3072, 3072]
         # 5) Mean covariance (between the 4 clusters)
         mean_cov = torch.matmul(all_cluster.T, all_cluster) / (centered.size(0) - 1)
         return cov, mean_cov

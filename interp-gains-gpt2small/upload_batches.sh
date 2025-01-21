@@ -3,7 +3,7 @@
 REPO_ID="modularity_activations_gpt2"
 BASE_DIR="/data/joan_velja/nn-modularity/interp-gains-gpt2small/interp-gains-gpt2small/data_refactored"
 
-echo "Wallahi, I am starting to upload your files"
+echo "Man, I am starting to upload your files"
 
 # Loop through batches 1-8
 for batch in {0..1}; do
