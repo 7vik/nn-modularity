@@ -77,43 +77,51 @@ class Trainer:
 
         # cluster_dict[0]
 
-        for epoch in range(num_epochs):
-            wiki = make_wiki_data_loader(self.tokenizer, batch_size=self.batch_size)
-            for idx, batch in enumerate(wiki.dataset['tokens']):
-                tokens = batch["tokens"].to(self.device)
+        # Added the loop for each cluster.
+        for cluster in self.num_clusters:
+            for epoch in range(num_epochs):
+                # Added the dataset here.
+                wiki = make_wiki_data_loader(self.tokenizer, batch_size=self.batch_size)
+                for idx, batch in enumerate(wiki.dataset['tokens']):
+                    #TODO: convert these tokens from GPT-2 to string.
+                    #TODO: convert that string to tokens (tensor) using pythia tokenizer
+                    #TODO: the loss cannot be computed as written in 101, as it is not hookedtransformer
+                    tokens = batch.to(self.device)
+                    print(tokens)
 
-                # CLUSTERABILITY LOSS
-                UVs = [
-                    cluster_dict[i] for i in keys
-                ]  # list of tuples of U, V for each layer (len = num_layers)
-                cluster_loss = sum(
-                    [
-                        clusterability(block, U, V)
-                        for (block, U, V) in zip(blocks_to_cluster, UVs)
-                    ]
-                ) / len(blocks_to_cluster)
+                    # CLUSTERABILITY LOSS
+                    UVs = [
+                        cluster_dict[i] for i in keys
+                    ]  # list of tuples of U, V for each layer (len = num_layers)
+                    cluster_loss = sum(
+                        [
+                            clusterability(block, X[0], X[1],cluster)
+                            for (block, X) in zip(blocks_to_cluster, UVs)
+                        ]
+                    ) / len(blocks_to_cluster)
 
-                train_loss = self.model(tokens, return_type="loss")
-                cluster_losses.append(cluster_loss.item())
-                train_losses.append(train_loss.item())
-                loss = train_loss - lomda * cluster_loss
-                optimizer.zero_grad()
-                loss.backward()
-                optimizer.step()
-                if idx % 100 == 0:
-                    print(
-                        f"Epoch {epoch + 1}, Batch {idx}, Train Loss: {round(train_loss.item(), 4)}, Clusterability: {round(cluster_loss, 4)}"
-                    )
-            torch.save(
-                self.model.state_dict(),
-                path + f"wiki_non_modular_mlp_in_model_epoch_{epoch + 1}.pt",
-            )
+                    # train_loss = self.model(tokens, return_type="loss")
+                    output = self.model(**tokens)
+                    cluster_losses.append(cluster_loss.item())
+                    train_losses.append(train_loss.item())
+                    loss = train_loss - lomda * cluster_loss
+                    optimizer.zero_grad()
+                    loss.backward()
+                    optimizer.step()
+                    if idx % 100 == 0:
+                        print(
+                            f"Epoch {epoch + 1}, Batch {idx}, Train Loss: {round(train_loss.item(), 4)}, Clusterability: {round(cluster_loss, 4)}"
+                        )
+                torch.save(
+                    self.model.state_dict(),
+                    path + f"wiki_non_modular_mlp_in_model_epoch_{epoch + 1}.pt",
+                )
 
-        # store the cluster losses and train losses
-        with open(path + "wiki_non_modular_mlp_in_cluster_losses.pkl", "wb") as f:
-            pkl.dump(cluster_losses, f)
-        with open(path + "wiki_non_modular_mlp_in_train_losses.pkl", "wb") as f:
-            pkl.dump(train_losses, f)
+            # store the cluster losses and train losses
+            with open(path + f"wiki_non_modular_mlp_in_cluster{cluster}_losses.pkl", "wb") as f:
+                pkl.dump(cluster_losses, f)
+            with open(path + f"wiki_non_modular_mlp_in_cluster{cluster}_train_losses.pkl", "wb") as f:
+                pkl.dump(train_losses, f)
 
 
 def main():
