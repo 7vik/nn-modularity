@@ -5,6 +5,7 @@ import torch
 from tqdm import tqdm
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from utils import clusterability, get_device, set_all_seeds, spectral_clustering
+from transformer_lens.evals import make_wiki_data_loader
 
 
 class Config:
@@ -52,13 +53,13 @@ class Clusters:
 
 
 class Trainer:
-    def __init__(self, model, tokenizer, num_clusters, datasets):
+    def __init__(self, model, tokenizer, num_clusters, batch_size):
         self.model = model
         self.tokenizer = tokenizer
         self.num_clusters = num_clusters
         self.num_layers = self.model.config.num_hidden_layers
+        self.batch_size = batch_size
         self.device = get_device()
-        self.datasets = datasets
 
     def train(self, cluster_dict):
         cluster_losses = []
@@ -77,7 +78,8 @@ class Trainer:
         # cluster_dict[0]
 
         for epoch in range(num_epochs):
-            for idx, batch in enumerate(self.datasets["wiki"]):
+            wiki = make_wiki_data_loader(self.tokenizer, batch_size=self.batch_size)
+            for idx, batch in enumerate(wiki.dataset['tokens']):
                 tokens = batch["tokens"].to(self.device)
 
                 # CLUSTERABILITY LOSS
@@ -117,12 +119,14 @@ class Trainer:
 def main():
     parser = argparse.ArgumentParser()
     # parser.add_argument("--model_name", type=str, default="EleutherAI/pythia-70m")
+    parser.add_argument("--batch_size", type=int, default=8)
     args = parser.parse_args()
     c = Config()
     model, tokenizer, num_clusters = c.forward()
     # cl = Clusters(model, tokenizer, num_clusters)
     # svd = cl.forward()
-    trainer = Trainer(model, tokenizer, num_clusters, datasets=None)
+
+    trainer = Trainer(model, tokenizer, num_clusters, batch_size=args.batch_size)
 
     with open("svd_dict.pkl", "rb") as f:
         svd_dict = pkl.load(f)
