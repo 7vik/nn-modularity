@@ -1,11 +1,16 @@
 import argparse
+import os
 import pickle as pkl
 
 import torch
+import transformer_lens.utils as utils
+
+# Dataset is from huggingface/datasets
+from datasets import Dataset, load_dataset
+from torch.utils.data import DataLoader, TensorDataset
 from tqdm import tqdm
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from utils import clusterability, get_device, set_all_seeds, spectral_clustering
-from transformer_lens.evals import make_wiki_data_loader
 
 
 class Config:
@@ -60,10 +65,39 @@ class Trainer:
         self.num_layers = self.model.config.num_hidden_layers
         self.batch_size = batch_size
         self.device = get_device()
+        # CE loss
+        self.loss = torch.nn.CrossEntropyLoss()
+        # Dataset for training
+        self.prep_dataset()
+
+    def prep_dataset(self):
+        # Load dataset
+        wiki_data = load_dataset("wikitext", "wikitext-2-v1", split="train")
+        texts = wiki_data["text"]
+
+        # Filter empty strings and get non-empty texts
+        texts = [text for text in texts if text.strip()]
+
+        # Use tokenize_and_concatenate for efficient tokenization and padding
+        tokenized_dataset = utils.tokenize_and_concatenate(
+            Dataset.from_dict({"text": texts}),
+            self.tokenizer,
+            streaming=False,
+            max_length=512,  # Standard context length
+            column_name="text",
+            add_bos_token=True,  # Add beginning of sequence token
+            num_proc=10,  # Parallel processing for speed
+        )
+
+        # Convert to tensor format
+        self.wiki_dataset = {
+            "input_ids": tokenized_dataset["tokens"],
+            "attention_mask": torch.ones_like(tokenized_dataset["tokens"]),
+        }
 
     def train(self, cluster_dict):
-        cluster_losses = []
-        train_losses = []
+        optimizer = torch.optim.Adam(self.model.parameters(), lr=1e-4)
+        train_losses, cluster_losses = [], []
         lomda = 40.0  # Feels iffy
         blocks_to_cluster = [
             self.model.gpt_neox.layers[layer_idx].mlp.dense_h_to_4h.weight
@@ -75,19 +109,33 @@ class Trainer:
         self.model.train()
         keys = list(range(self.num_layers))  # keys of cluster_dict
 
-        # cluster_dict[0]
+        # Create proper DataLoader
+        train_dataloader = DataLoader(
+            TensorDataset(
+                self.wiki_dataset["input_ids"], self.wiki_dataset["attention_mask"]
+            ),
+            batch_size=self.batch_size,
+            shuffle=True,
+        )
 
         # Added the loop for each cluster.
         for cluster in self.num_clusters:
             for epoch in range(num_epochs):
-                # Added the dataset here.
-                wiki = make_wiki_data_loader(self.tokenizer, batch_size=self.batch_size)
-                for idx, batch in enumerate(wiki.dataset['tokens']):
-                    #TODO: convert these tokens from GPT-2 to string.
-                    #TODO: convert that string to tokens (tensor) using pythia tokenizer
-                    #TODO: the loss cannot be computed as written in 101, as it is not hookedtransformer
-                    tokens = batch.to(self.device)
-                    print(tokens)
+                progress_bar = tqdm(train_dataloader, desc=f"Epoch {epoch + 1}")
+                epoch_losses = []
+                # for idx, batch in enumerate(self.wiki_dataset["tokens"]):
+                for batch in progress_bar:
+                    # TODO: the loss cannot be computed as written in 101, as it is not hookedtransformer
+
+                    input_ids, attention_mask = [t.to(self.device) for t in batch]
+
+                    # Forward pass
+                    outputs = self.model(
+                        input_ids=input_ids,
+                        attention_mask=attention_mask,
+                        labels=input_ids,  # For causal LM loss
+                    )
+                    train_loss = outputs.loss
 
                     # CLUSTERABILITY LOSS
                     UVs = [
@@ -95,33 +143,59 @@ class Trainer:
                     ]  # list of tuples of U, V for each layer (len = num_layers)
                     cluster_loss = sum(
                         [
-                            clusterability(block, X[0], X[1],cluster)
+                            clusterability(block, X[0], X[1], cluster)
                             for (block, X) in zip(blocks_to_cluster, UVs)
                         ]
                     ) / len(blocks_to_cluster)
 
-                    # train_loss = self.model(tokens, return_type="loss")
-                    output = self.model(**tokens)
-                    cluster_losses.append(cluster_loss.item())
-                    train_losses.append(train_loss.item())
+                    # Combined loss
                     loss = train_loss - lomda * cluster_loss
+
+                    # Backward pass
                     optimizer.zero_grad()
                     loss.backward()
                     optimizer.step()
-                    if idx % 100 == 0:
-                        print(
-                            f"Epoch {epoch + 1}, Batch {idx}, Train Loss: {round(train_loss.item(), 4)}, Clusterability: {round(cluster_loss, 4)}"
-                        )
-                torch.save(
-                    self.model.state_dict(),
-                    path + f"wiki_non_modular_mlp_in_model_epoch_{epoch + 1}.pt",
-                )
 
-            # store the cluster losses and train losses
-            with open(path + f"wiki_non_modular_mlp_in_cluster{cluster}_losses.pkl", "wb") as f:
-                pkl.dump(cluster_losses, f)
-            with open(path + f"wiki_non_modular_mlp_in_cluster{cluster}_train_losses.pkl", "wb") as f:
-                pkl.dump(train_losses, f)
+                    # Track losses
+                    train_losses.append(train_loss.item())
+                    cluster_losses.append(cluster_loss.item())
+                    epoch_losses.append(loss.item())
+
+                    # Update progress bar
+                    progress_bar.set_postfix(
+                        {
+                            "train_loss": f"{train_loss.item():.4f}",
+                            "clusterability": f"{cluster_loss.item():.4f}",
+                        }
+                    )
+
+                # # store the cluster losses and train losses
+                # with open(
+                #     path + f"wiki_non_modular_mlp_in_cluster{cluster}_losses.pkl", "wb"
+                # ) as f:
+                #     pkl.dump(cluster_losses, f)
+                # with open(
+                #     path + f"wiki_non_modular_mlp_in_cluster{cluster}_train_losses.pkl",
+                #     "wb",
+                # ) as f:
+                #     pkl.dump(train_losses, f)
+                avg_loss = sum(epoch_losses) / len(epoch_losses)
+                checkpoint = {
+                    "epoch": epoch + 1,
+                    "model_state_dict": self.model.state_dict(),
+                    "optimizer_state_dict": optimizer.state_dict(),
+                    "loss": avg_loss,
+                }
+                torch.save(
+                    checkpoint,
+                    os.path.join(
+                        path, f"model_epoch_{epoch + 1}_loss_{avg_loss:.4f}.pt"
+                    ),
+                )
+                print(f"Model saved at epoch {epoch + 1} with loss {avg_loss:.4f}")
+                print("===" * 10)
+
+        return train_losses, cluster_losses
 
 
 def main():
