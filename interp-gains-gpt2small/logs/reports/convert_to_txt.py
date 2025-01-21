@@ -5,26 +5,26 @@ from tqdm import tqdm
 
 tokenizer = transformers.GPT2Tokenizer.from_pretrained('gpt2')
 
-paths = ["interp-gains-gpt2small/data/samples_type2_layer2_mod1.pkl",
-        "interp-gains-gpt2small/data/samples_type2_layer2_mod2.pkl",
-        "interp-gains-gpt2small/data/samples_type2_layer2_mod3.pkl",
-        "interp-gains-gpt2small/data/samples_type2_layer2_mod4.pkl",
-        "interp-gains-gpt2small/data/samples_type2_layer5_mod1.pkl",
-        "interp-gains-gpt2small/data/samples_type2_layer5_mod2.pkl",
-        "interp-gains-gpt2small/data/samples_type2_layer5_mod3.pkl",
-        "interp-gains-gpt2small/data/samples_type2_layer5_mod4.pkl",
-        "interp-gains-gpt2small/data/samples_type2_layer6_mod1.pkl",
-        "interp-gains-gpt2small/data/samples_type2_layer6_mod2.pkl",
-        "interp-gains-gpt2small/data/samples_type2_layer6_mod3.pkl",
-        "interp-gains-gpt2small/data/samples_type2_layer6_mod4.pkl",
-        "interp-gains-gpt2small/data/samples_type2_layer7_mod1.pkl",
-        "interp-gains-gpt2small/data/samples_type2_layer7_mod2.pkl",
-        "interp-gains-gpt2small/data/samples_type2_layer7_mod3.pkl",
-        "interp-gains-gpt2small/data/samples_type2_layer7_mod4.pkl",
-        "interp-gains-gpt2small/data/samples_type2_layer10_mod1.pkl",
-        "interp-gains-gpt2small/data/samples_type2_layer10_mod2.pkl",
-        "interp-gains-gpt2small/data/samples_type2_layer10_mod3.pkl",
-        "interp-gains-gpt2small/data/samples_type2_layer10_mod4.pkl"]
+paths = ["interp-gains-gpt2small/data/samples_nmodel_type2_layer2_mod1.pkl",
+        "interp-gains-gpt2small/data/samples_nmodel_type2_layer2_mod2.pkl",
+        "interp-gains-gpt2small/data/samples_nmodel_type2_layer2_mod3.pkl",
+        "interp-gains-gpt2small/data/samples_nmodel_type2_layer2_mod4.pkl",
+        "interp-gains-gpt2small/data/samples_nmodel_type2_layer5_mod1.pkl",
+        "interp-gains-gpt2small/data/samples_nmodel_type2_layer5_mod2.pkl",
+        "interp-gains-gpt2small/data/samples_nmodel_type2_layer5_mod3.pkl",
+        "interp-gains-gpt2small/data/samples_nmodel_type2_layer5_mod4.pkl",
+        "interp-gains-gpt2small/data/samples_nmodel_type2_layer6_mod1.pkl",
+        "interp-gains-gpt2small/data/samples_nmodel_type2_layer6_mod2.pkl",
+        "interp-gains-gpt2small/data/samples_nmodel_type2_layer6_mod3.pkl",
+        "interp-gains-gpt2small/data/samples_nmodel_type2_layer6_mod4.pkl",
+        "interp-gains-gpt2small/data/samples_nmodel_type2_layer7_mod1.pkl",
+        "interp-gains-gpt2small/data/samples_nmodel_type2_layer7_mod2.pkl",
+        "interp-gains-gpt2small/data/samples_nmodel_type2_layer7_mod3.pkl",
+        "interp-gains-gpt2small/data/samples_nmodel_type2_layer7_mod4.pkl",
+        "interp-gains-gpt2small/data/samples_nmodel_type2_layer10_mod1.pkl",
+        "interp-gains-gpt2small/data/samples_nmodel_type2_layer10_mod2.pkl",
+        "interp-gains-gpt2small/data/samples_nmodel_type2_layer10_mod3.pkl",
+        "interp-gains-gpt2small/data/samples_nmodel_type2_layer10_mod4.pkl"]
 
 
 for path in tqdm(paths):

@@ -64,9 +64,9 @@ def get_activations(args):
         
         
     logging.info("Done\n\n\n")
-    
-    
-    
+
+
+
 def activation_analysis(args):
     
 
@@ -125,7 +125,6 @@ def activation_analysis(args):
     for layer_idx in tqdm(range(12)):
         visualize(universal_dict[layer_idx], layer_idx)
         # _ = covariance_matrix(batch[6])
-
 
 
 
