@@ -57,20 +57,24 @@ def intervention(args, index, module, func = "analysis"):
             output = mod_output
             return output
 
-    hook_ = model_mod.blocks[args.num_layer].mlp.hook_pre.register_forward_hook(hook_fn)
+    hook_ = model_nmod.blocks[args.num_layer].mlp.hook_pre.register_forward_hook(hook_fn)
     
     
     
     def analysis(args,module):
-        with open(f"interp-gains-gpt2small/data/cropped_dataset_last_token.pkl", "rb") as f:
-            samples = pkl.load(f)   
+        
+        try:
+            with open(f"interp-gains-gpt2small/data/cropped_nmodel_dataset_last_token.pkl", "rb") as f:
+                samples = pkl.load(f)   
+        except:
+            dataset_prepartion(args)
         
         correct = 0; total = 0
         prediction = []
         correct_samples = []
         for sample_idx in tqdm(range(len(samples))):
             sample = samples[sample_idx].to(device)
-            logits = model_mod(sample)
+            logits = model_nmod(sample)
             predicted_string = []
             # comparing second last token of generated sentence with last token of ground truth word
             if sample[:,-1].item() == logits[:,-2,:].argmax(dim = -1).item(): 
@@ -79,10 +83,10 @@ def intervention(args, index, module, func = "analysis"):
             else:
                 prediction.append(0)
 
-        with open(f"interp-gains-gpt2small/data/prediction_{args.type_of_intervention}_layer{args.num_layer}_{module}.pkl", "wb") as f:
+        with open(f"interp-gains-gpt2small/data/prediction_nmodel_{args.type_of_intervention}_layer{args.num_layer}_{module}.pkl", "wb") as f:
             pkl.dump(prediction, f)
         
-        with open(f"interp-gains-gpt2small/data/samples_{args.type_of_intervention}_layer{args.num_layer}_{module}.pkl", "wb") as f:
+        with open(f"interp-gains-gpt2small/data/samples_nmodel_{args.type_of_intervention}_layer{args.num_layer}_{module}.pkl", "wb") as f:
             pkl.dump(correct_samples, f)    
     
     
@@ -95,7 +99,7 @@ def intervention(args, index, module, func = "analysis"):
         
         for module in ["mod1", "mod2", "mod3", "mod4"]:
             
-            with open(f"interp-gains-gpt2small/data/prediction_{args.type_of_intervention}_layer{args.num_layer}_{module}.pkl", "rb") as f:
+            with open(f"interp-gains-gpt2small/data/prediction_nmodel_{args.type_of_intervention}_layer{args.num_layer}_{module}.pkl", "rb") as f:
                 prediction = pkl.load(f)
             
             final_dict[module] = prediction
@@ -109,7 +113,8 @@ def intervention(args, index, module, func = "analysis"):
         
         plt.legend()
         plt.grid(True)
-        plt.savefig(f"interp-gains-gpt2small/plots/{args.type_of_intervention}_layer{args.num_layer}_accuracy.png", dpi = 300)
+        os.makedirs("interp-gains-gpt2small/plots/nmodel", exist_ok=True)
+        plt.savefig(f"interp-gains-gpt2small/plots/nmodel/{args.type_of_intervention}_layer{args.num_layer}_accuracy.png", dpi = 300)
         plt.close()
         
         # visualize(final_dict)
@@ -153,7 +158,7 @@ def intervention(args, index, module, func = "analysis"):
         plt.title('Spike denotes when a module is turned off the accuracy for sample goes down', size=16)
         plt.legend()
         plt.grid(True)
-        plt.savefig(f"interp-gains-gpt2small/plots/{args.type_of_intervention}_layer{args.num_layer}_effect.png", dpi = 300)
+        plt.savefig(f"interp-gains-gpt2small/plots/nmodel/{args.type_of_intervention}_layer{args.num_layer}_effect.png", dpi = 300)
         plt.close()
     
     
@@ -177,10 +182,11 @@ def intervention(args, index, module, func = "analysis"):
         hook_.remove()
         
         os.makedirs("interp-gains-gpt2small/data", exist_ok=True)
-        with open(f"interp-gains-gpt2small/data/cropped_dataset_last_token.pkl", "wb") as f:
+        with open(f"interp-gains-gpt2small/data/cropped_nmodel_dataset_last_token.pkl", "wb") as f:
             pkl.dump(samples, f)
         
         return correct/total
+    
     
     if func == "analysis":
         _ = analysis(args,module)
