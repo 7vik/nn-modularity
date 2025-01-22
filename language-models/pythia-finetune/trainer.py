@@ -172,7 +172,7 @@ class Trainer:
                 progress_bar.set_postfix(
                     {
                         "train_loss": f"{train_loss.item():.4f}",
-                        "cluster_loss": f"{cluster_loss.item():.4f}",
+                        "clusterability": f"{cluster_loss.item():.4f}",
                         "val_loss": f"{val_metrics['loss']:.4f}",
                         "best_val_loss": f"{self.best_val_loss:.4f}",
                     }
@@ -181,7 +181,7 @@ class Trainer:
                 progress_bar.set_postfix(
                     {
                         "train_loss": f"{train_loss.item():.4f}",
-                        "cluster_loss": f"{cluster_loss.item():.4f}",
+                        "clusterability": f"{cluster_loss.item():.4f}",
                     }
                 )
 
