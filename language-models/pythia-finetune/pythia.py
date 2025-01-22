@@ -8,7 +8,7 @@ from trainer import Trainer
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--batch_size", type=int, default=128)
+    parser.add_argument("--batch_size", type=int, default=32)
     parser.add_argument("--lr", type=float, default=5e-5)
     parser.add_argument("--num_epochs", type=int, default=2)
     args = parser.parse_args()
