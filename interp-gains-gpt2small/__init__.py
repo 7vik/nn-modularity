@@ -23,3 +23,6 @@ import warnings
 warnings.filterwarnings("ignore")
 import transformer_lens
 from pprint import pprint
+import matplotlib as mpl
+from matplotlib.colors import rgb_to_hsv, to_rgb
+from PIL import Image
