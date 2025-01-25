@@ -99,7 +99,7 @@ def intervention(args, index, module, func = "analysis"):
         
         for module in ["mod1", "mod2", "mod3", "mod4"]:
             
-            with open(f"interp-gains-gpt2small/data/prediction_nmodel_{args.type_of_intervention}_layer{args.num_layer}_{module}.pkl", "rb") as f:
+            with open(f"interp-gains-gpt2small/data/prediction_{args.type_of_intervention}_layer{args.num_layer}_{module}.pkl", "rb") as f:
                 prediction = pkl.load(f)
             
             final_dict[module] = prediction
@@ -144,22 +144,119 @@ def intervention(args, index, module, func = "analysis"):
 
         # Unzipping the filtered tuples back into separate lists
         list1_filtered, list2_filtered, list3_filtered, list4_filtered = map(list, zip(*filtered_lists))
+        
+        
+        def old_graph():
+            '''
+            The visualisation of the messy graphs which has many towers and stuff.
+            '''
+            # Plotting
+            plt.subplots(figsize=(20, 5))
+            x = np.arange(len(list1_filtered))
+            p1 = plt.bar(x, list1_filtered, label='Module 1', width=0.5)
+            p2 = plt.bar(x, list2_filtered, label='Module 2', width=0.5, bottom=list1_filtered)
+            p3 = plt.bar(x, list3_filtered, label='Module 3', width=0.5, bottom=np.add(list1_filtered, list2_filtered))
+            p4 = plt.bar(x, list4_filtered, label='Module 4', width=0.5, bottom=np.add(list1_filtered, np.add(list2_filtered, list3_filtered)))
 
-        # Plotting
-        plt.subplots(figsize=(20, 5))
-        x = np.arange(len(list1_filtered))
-        p1 = plt.bar(x, list1_filtered, label='Module 1', width=0.5)
-        p2 = plt.bar(x, list2_filtered, label='Module 2', width=0.5, bottom=list1_filtered)
-        p3 = plt.bar(x, list3_filtered, label='Module 3', width=0.5, bottom=np.add(list1_filtered, list2_filtered))
-        p4 = plt.bar(x, list4_filtered, label='Module 4', width=0.5, bottom=np.add(list1_filtered, np.add(list2_filtered, list3_filtered)))
+            plt.xlabel('Sample Index', size=12)
+            plt.ylabel('Effect of Module', size=12)
+            plt.title('Spike denotes when a module is turned off the accuracy for sample goes down', size=16)
+            plt.legend()
+            plt.grid(True)
+            plt.savefig(f"interp-gains-gpt2small/plots/{args.type_of_intervention}_layer{args.num_layer}_effect.png", dpi = 300)
+            plt.close()
+        
+        def get_contrasting_color(hex_color):
+            """
+            Returns white for dark colors and black for light colors
+            based on the brightness of the input color.
+            """
+            rgb = to_rgb(hex_color)  # Convert hex to RGB
+            brightness = rgb_to_hsv(rgb)[2]  # Get the "value" component of HSV
+            return "white" if brightness < 0.5 else "black"
 
-        plt.xlabel('Sample Index', size=12)
-        plt.ylabel('Effect of Module', size=12)
-        plt.title('Spike denotes when a module is turned off the accuracy for sample goes down', size=16)
-        plt.legend()
-        plt.grid(True)
-        plt.savefig(f"interp-gains-gpt2small/plots/nmodel/{args.type_of_intervention}_layer{args.num_layer}_effect.png", dpi = 300)
-        plt.close()
+        def pie_chart():
+            """
+            Creates a pie chart showing the distribution of samples depending on the number of modules they depend on.
+            """
+            # Initialize counters
+            all_four = 0
+            all_three = 0
+            all_two = 0
+            all_one = 0
+
+            # Count the occurrences for each category
+            for sample_idx in range(len(list1_filtered)):
+                if list1_filtered[sample_idx] == list2_filtered[sample_idx] == list3_filtered[sample_idx] == list4_filtered[sample_idx] == 1:
+                    all_four += 1
+                elif (
+                    list1_filtered[sample_idx] == list2_filtered[sample_idx] == list3_filtered[sample_idx] == 1 or
+                    list1_filtered[sample_idx] == list2_filtered[sample_idx] == list4_filtered[sample_idx] == 1 or
+                    list1_filtered[sample_idx] == list3_filtered[sample_idx] == list4_filtered[sample_idx] == 1 or
+                    list2_filtered[sample_idx] == list3_filtered[sample_idx] == list4_filtered[sample_idx] == 1
+                ):
+                    all_three += 1
+                elif (
+                    list1_filtered[sample_idx] == list2_filtered[sample_idx] == 1 or
+                    list1_filtered[sample_idx] == list3_filtered[sample_idx] == 1 or
+                    list1_filtered[sample_idx] == list4_filtered[sample_idx] == 1 or
+                    list2_filtered[sample_idx] == list3_filtered[sample_idx] == 1 or
+                    list2_filtered[sample_idx] == list4_filtered[sample_idx] == 1 or
+                    list3_filtered[sample_idx] == list4_filtered[sample_idx] == 1
+                ):
+                    all_two += 1
+                elif (
+                    list1_filtered[sample_idx] == 1 or
+                    list2_filtered[sample_idx] == 1 or
+                    list3_filtered[sample_idx] == 1 or
+                    list4_filtered[sample_idx] == 1
+                ):
+                    all_one += 1
+
+            # Data for the pie chart
+            labels = ['Depends on all 4', 'Depends on all 3', 'Depends on all 2', 'Depends on just 1']
+            sizes = [all_four, all_three, all_two, all_one] # Replace with your actual data
+            colors = ['#267326', '#5db85d', '#91d891', '#d4f7d4']  # Green gradient (dark to light)
+
+            # Set up Matplotlib parameters for better styling
+            mpl.rcParams.update({
+                'font.size': 14,        # General font size
+                'axes.titlesize': 18,   # Title size
+                'axes.labelsize': 16,   # Label size
+                'legend.fontsize': 12,  # Legend font size
+            })
+
+            # Create the pie chart
+            fig, ax = plt.subplots(figsize=(8, 6))  # Adjust figure size
+            wedges, texts, autotexts = ax.pie(
+                sizes,
+                labels=labels,
+                colors=colors,
+                autopct='%1.1f%%',       # Show percentages with 1 decimal place
+                startangle=90,          # Start from top (90 degrees)
+                textprops={'fontsize': 14}  # Font size for text
+            )
+
+            # Adjust label and percentage text colors dynamically
+            for i, autotext in enumerate(autotexts):
+                autotext.set_color(get_contrasting_color(colors[i]))  # Adjust percentage text color
+                autotext.set_weight("bold")  # Make percentages bold
+            for text in texts:
+                text.set_color("black")  # Keep labels black for consistency
+
+            ax.axis('equal')  # Equal aspect ratio ensures the pie is drawn as a circle
+            plt.title("Effect of Modules on Samples", pad=20)  # Add padding to title for spacing
+
+            # Save the figure
+            output_path = f"interp-gains-gpt2small/plots/pie_chart/{args.type_of_intervention}_layer{args.num_layer}_pie.png"
+            plt.tight_layout()  # Adjust layout to prevent clipping
+            plt.savefig(output_path, dpi=400, bbox_inches='tight', format='png')  # High DPI for professional quality
+            plt.close()
+
+        pie_chart()
+        
+
+
     
     
     def dataset_prepartion(args):
@@ -195,18 +292,39 @@ def intervention(args, index, module, func = "analysis"):
         final_analysis(args)
     
 
-def visualize(dictionary):
-    plt.figure(figsize=(10, 5))
-    plt.plot(dictionary["mod1"], label='Module 1')
-    plt.plot(dictionary["mod2"], label='Module 2')
-    plt.plot(dictionary["mod3"], label='Module 3')
-    plt.plot(dictionary["mod4"], label='Module 4')
-    plt.legend()
-    plt.xlabel('Samples')
-    plt.ylabel('Loss')
-    plt.show()
-    plt.close()
+def visualize():
+    folder_paths = ["interp-gains-gpt2small/plots/nmodel/pie_chart/type1",
+                    "interp-gains-gpt2small/plots/nmodel/pie_chart/type2",
+                    "interp-gains-gpt2small/plots/pie_chart/type1",
+                    "interp-gains-gpt2small/plots/pie_chart/type2"]
+    
+    for folder_path in folder_paths:
+        # List all image files in the folder
+        image_files = [f for f in os.listdir(folder_path) if f.endswith(('.png', '.jpg', '.jpeg'))]
+        image_files.sort()  # Optional: Sort files for consistent order
+        
+        # Set up the figure for a single-row layout
+        num_images = len(image_files)
+        fig, axes = plt.subplots(1, num_images, figsize=(num_images * 4, 4))  # Adjust figsize based on the number of images
 
+        # Handle single image case (axes would not be iterable)
+        if num_images == 1:
+            axes = [axes]
+
+        # Loop through images and plot each in the row
+        for ax, img_file in zip(axes, image_files):
+            img_path = os.path.join(folder_path, img_file)
+            img = Image.open(img_path)
+            ax.imshow(img)
+            ax.axis('off')  # Turn off axes for better appearance
+            # ax.set_title(img_file, fontsize=10)  # Set the title to the file name
+
+        # Adjust layout
+        plt.tight_layout()
+        
+        # Save the plot to a file if specified
+        plt.savefig(folder_path+"collage.png", dpi=300, bbox_inches='tight', format='png')
+        
 
 def main():
     
@@ -238,20 +356,21 @@ def main():
     
     
     
-    for i in tqdm(range(4)):
-        if i == 0:
-            print(f"Intervention using the index {i} on layer {args.num_layer}")
-            intervention(args, index1, module = "mod1")
-        elif i == 1:
-            print(f"Intervention using the index {i} on layer {args.num_layer}")
-            intervention(args, index2, module = "mod2")
-        elif i == 2:
-            print(f"Intervention using the index {i} on layer {args.num_layer}")
-            intervention(args, index3, module = "mod3")
-        elif i == 3:
-            print(f"Intervention using the index {i} on layer {args.num_layer}")
-            intervention(args, index4, module="mod4")
-            intervention(args, index4, module="mod4", func = "final_analysis")
+    # for i in tqdm(range(4)):
+    #     if i == 0:
+    #         print(f"Intervention using the index {i} on layer {args.num_layer}")
+    #         intervention(args, index1, module = "mod1")
+    #     elif i == 1:
+    #         print(f"Intervention using the index {i} on layer {args.num_layer}")
+    #         intervention(args, index2, module = "mod2")
+    #     elif i == 2:
+    #         print(f"Intervention using the index {i} on layer {args.num_layer}")
+    #         intervention(args, index3, module = "mod3")
+    #     elif i == 3:
+    #         print(f"Intervention using the index {i} on layer {args.num_layer}")
+    #         intervention(args, index4, module="mod4")
+    #         intervention(args, index4, module="mod4", func = "final_analysis")
+    visualize()
 
 
 
