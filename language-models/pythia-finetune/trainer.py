@@ -17,6 +17,7 @@ class Trainer:
         num_clusters,
         model_name,
         steps_to_cluster=150,
+        enable_BSGC=False,
     ):
         self.model = model
         self.tokenizer = tokenizer
@@ -32,10 +33,11 @@ class Trainer:
         self.best_model_path = os.path.join(
             f"./checkpoints_{model_name}/", "best_model.pt"
         )
-        path = "./checkpoints_{model_name}/"
+        path = f"./checkpoints_{model_name}/"
         os.makedirs(path, exist_ok=True)
 
         self.cluster_dict = None
+        self.enable_BSGC = enable_BSGC
 
         # Set tokenizer cleanup behavior explicitly
         self.tokenizer.clean_up_tokenization_spaces = True
@@ -156,7 +158,10 @@ class Trainer:
             if self.steps == self.steps_to_cluster:
                 # Recluster the model
                 self.cluster_dict = Clusters(
-                    self.model, self.tokenizer, num_clusters
+                    self.model,
+                    self.tokenizer,
+                    num_clusters,
+                    enable_BSGC=self.enable_BSGC,
                 ).forward()
                 print("Model has been reclustered.")
 

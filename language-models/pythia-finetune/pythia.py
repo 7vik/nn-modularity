@@ -4,16 +4,19 @@ import pickle as pkl
 
 from cluster import Clusters
 from config import Config
+
+# Login into huggingface_hub
+from huggingface_hub import login
 from trainer import Trainer
 from utils import autotune_batch_size
 
-os.environ["HUGGINGFACE_TOKEN"] = AAAA
-USER = UUUU
+os.environ["HUGGINGFACE_TOKEN"] = AAA
+USER = BBB
 
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--lr", type=float, default=5e-7)
+    parser.add_argument("--lr", type=float, default=5e-5)
     parser.add_argument("--num_epochs", type=int, default=2)
     parser.add_argument(
         "--model_name", type=str, default="EleutherAI/pythia-70m"
@@ -23,6 +26,9 @@ def main():
     )  # defaulting to False for our purposes
     args = parser.parse_args()
     clusters_list = [4]
+
+    # Login to huggingface
+    login(token=os.environ["HUGGINGFACE_TOKEN"])
 
     svd_clusters_dict = {
         cluster_idx: {} for cluster_idx in clusters_list
@@ -39,7 +45,9 @@ def main():
         print(f"Training for cluster {num_clusters}")
 
         # INITIALIZE MODEL
-        model, tokenizer = Config().forward()  # Get fresh model instance
+        model, tokenizer = Config(
+            model_name=args.model_name
+        ).forward()  # Get fresh model instance
         clusters = Clusters(model, tokenizer, num_clusters, args.enable_BSGC)
         bs = autotune_batch_size(
             model, tokenizer
@@ -60,6 +68,7 @@ def main():
             num_clusters=num_clusters,
             steps_to_cluster=150,  # Play with this value to start clustering at a later moment!
             model_name=args.model_name.split("/")[-1],
+            enable_BSGC=args.enable_BSGC,
         )
 
         # TRAIN THE MODEL WITH CLUSTERED WEIGHTS
@@ -74,10 +83,10 @@ def main():
         # Push model, tokenizer to huggingface
         bsgc_string = "BSGC" if args.enable_BSGC else "NoBSGC"
         trainer.model.push_to_hub(
-            f"{USER}/pythia-finetune-{args.model_name}-clusters-{num_clusters}-{bsgc_string}"
+            f"{USER}/pythia-finetune-{args.model_name.split('/')[-1]}-clusters-{num_clusters}-{bsgc_string}"
         )
         trainer.tokenizer.push_to_hub(
-            f"{USER}/pythia-finetune-{args.model_name}-clusters-{num_clusters}-{bsgc_string}"
+            f"{USER}/pythia-finetune-{args.model_name.split('/')[-1]}-clusters-{num_clusters}-{bsgc_string}"
         )
 
     # DUMP THE SVD DICTIONARY

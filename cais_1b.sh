@@ -13,4 +13,4 @@ conda activate modularity
 
 cd /data/joan_velja/nn-modularity/language-models/pythia-finetune
 
-srun python -u pythia.py --model_name EleutherAI/pythia-1.4b
+srun python -u pythia.py --model_name EleutherAI/pythia-1.4b --lr 5e-4
