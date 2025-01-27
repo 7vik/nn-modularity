@@ -7,8 +7,8 @@ from config import Config
 from trainer import Trainer
 from utils import autotune_batch_size
 
-os.environ["HUGGINGFACE_TOKEN"] = INSERT YOUR TOKEN HERE
-USER = INSERT YOUR HF USER HERE TO PUSH TO HUB
+os.environ["HUGGINGFACE_TOKEN"] = AAAA
+USER = UUUU
 
 
 def main():
@@ -18,7 +18,9 @@ def main():
     parser.add_argument(
         "--model_name", type=str, default="EleutherAI/pythia-70m"
     )  # Switch here for different models
-    parser.add_argument("--enable_BSGC", type=bool, default=False) # defaulting to False for our purposes
+    parser.add_argument(
+        "--enable_BSGC", type=bool, default=False
+    )  # defaulting to False for our purposes
     args = parser.parse_args()
     clusters_list = [4]
 
@@ -57,6 +59,7 @@ def main():
             batch_size=args.batch_size,
             num_clusters=num_clusters,
             steps_to_cluster=150,  # Play with this value to start clustering at a later moment!
+            model_name=args.model_name.split("/")[-1],
         )
 
         # TRAIN THE MODEL WITH CLUSTERED WEIGHTS

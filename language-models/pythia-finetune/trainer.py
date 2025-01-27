@@ -10,7 +10,13 @@ from utils import clusterability, get_device
 
 class Trainer:
     def __init__(
-        self, model, tokenizer, batch_size, num_clusters, steps_to_cluster=150
+        self,
+        model,
+        tokenizer,
+        batch_size,
+        num_clusters,
+        model_name,
+        steps_to_cluster=150,
     ):
         self.model = model
         self.tokenizer = tokenizer
@@ -22,7 +28,13 @@ class Trainer:
         self.val_freq = 100
         self.steps_to_cluster = steps_to_cluster
         self.best_val_loss = float("inf")
-        self.best_model_path = os.path.join("./checkpoints/", "best_model.pt")
+        self.model_name = model_name
+        self.best_model_path = os.path.join(
+            f"./checkpoints_{model_name}/", "best_model.pt"
+        )
+        path = "./checkpoints_{model_name}/"
+        os.makedirs(path, exist_ok=True)
+
         self.cluster_dict = None
 
         # Set tokenizer cleanup behavior explicitly
@@ -102,9 +114,6 @@ class Trainer:
         )
 
     def train(self, cluster_dict, num_epochs=2, lr=5e-7):
-        path = "./checkpoints/"
-        os.makedirs(path, exist_ok=True)
-
         self.model.train()
         self.steps = 0
         optimizer = torch.optim.Adam(self.model.parameters(), lr=lr)
@@ -292,5 +301,6 @@ class Trainer:
             "num_clusters": num_clusters,
         }
         torch.save(
-            checkpoint, f"./checkpoints/model_cluster_{num_clusters}_epoch_{epoch}.pt"
+            checkpoint,
+            f"./checkpoints_{self.model_name}/model_cluster_{num_clusters}_epoch_{epoch}.pt",
         )
