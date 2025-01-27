@@ -171,7 +171,7 @@ def get_device() -> torch.device:
 
 
 def autotune_batch_size(
-    model, tokenizer, block_size, max_batch=64, safety_margin=0.85
+    model, tokenizer, block_size=512, max_batch=32, safety_margin=0.85
 ) -> int:
     """
     Autotune the maximum batch size for a given model and tokenizer.
