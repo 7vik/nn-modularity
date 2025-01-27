@@ -4,7 +4,7 @@
 #SBATCH --time=01:00:00
 #SBATCH --partition=single
 #SBATCH --job-name=train_run
-#SBATCH --output=logs//model_training-pythia1.4b%j.out
+#SBATCH --output=logs//model_training-pythia70m%j.out
 
 
 source /data/joan_velja/anaconda3/etc/profile.d/conda.sh
