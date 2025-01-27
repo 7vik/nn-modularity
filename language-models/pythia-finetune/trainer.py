@@ -32,7 +32,7 @@ class Trainer:
         self.best_model_path = os.path.join(
             f"./checkpoints_{model_name}/", "best_model.pt"
         )
-        path = "./checkpoints_{model_name}/"
+        path = f"./checkpoints_{model_name}/"
         os.makedirs(path, exist_ok=True)
 
         self.cluster_dict = None
