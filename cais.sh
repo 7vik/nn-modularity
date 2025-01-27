@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --nodes=1
 #SBATCH --gpus-per-node=1
-#SBATCH --time=06:00:00
+#SBATCH --time=03:00:00
 #SBATCH --partition=single
 #SBATCH --job-name=train_run
 #SBATCH --output=logs//model_training-%j.out

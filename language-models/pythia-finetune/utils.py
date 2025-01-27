@@ -12,8 +12,8 @@ from sklearn.cluster import KMeans
 
 def clusterability(
     matrix: torch.Tensor,
-    cluster_U_indices: dict[int, list[Any]],
-    cluster_V_indices: dict[int, list[Any]],
+    cluster_U_indices: dict[int, list[Any]] | None,
+    cluster_V_indices: dict[int, list[Any]] | None,
     num_clusters: int,
 ):
     """
@@ -31,6 +31,17 @@ def clusterability(
 
     A = matrix**2
     mask = torch.zeros_like(A, dtype=torch.bool)
+
+    if cluster_U_indices is None or cluster_V_indices is None:
+        cluster_size = (A.shape[0] // num_clusters, A.shape[1] // num_clusters)
+        cluster_U_indices = {
+            i: list(range(i * cluster_size[0], (i + 1) * cluster_size[0]))
+            for i in range(num_clusters)
+        }
+        cluster_V_indices = {
+            i: list(range(i * cluster_size[1], (i + 1) * cluster_size[1]))
+            for i in range(num_clusters)
+        }
 
     for cluster_idx in range(num_clusters):
         u_indices = torch.tensor(cluster_U_indices[cluster_idx], dtype=torch.long)
@@ -157,3 +168,69 @@ def get_device() -> torch.device:
     if is_mps_available():
         return torch.device("mps")
     return torch.device("cpu")
+
+
+def autotune_batch_size(
+    model, tokenizer, block_size, max_batch=64, safety_margin=0.85
+) -> int:
+    """
+    Autotune the maximum batch size for a given model and tokenizer.
+
+    Args:
+        model: The PyTorch model to autotune
+        tokenizer: The tokenizer for the model
+        block_size: The maximum sequence length
+        max_batch: The maximum batch size to search for
+        safety_margin: The fraction of GPU memory to utilize
+
+    Returns:
+        int: The maximum batch size that fits within the safety margin
+    """
+
+    device = next(model.parameters()).device
+    dtype = next(model.parameters()).dtype
+
+    def create_dummy_batch(batch_size):
+        return {
+            "input_ids": torch.full(
+                (batch_size, block_size),
+                tokenizer.pad_token_id,
+                dtype=torch.long,
+                device=device,
+            ),
+            "attention_mask": torch.ones(
+                (batch_size, block_size), dtype=torch.long, device=device
+            ),
+        }
+
+    # Find maximum possible batch size through exponential search
+    low, high = 1, max_batch
+    best_size = 1
+
+    while low <= high:
+        mid = (low + high) // 2
+        torch.cuda.empty_cache()
+
+        try:
+            dummy = create_dummy_batch(mid)
+            outputs = model(**dummy, labels=dummy["input_ids"])
+            loss = outputs.loss
+            loss.backward()
+            model.zero_grad()
+
+            # Check memory utilization with safety margin
+            total_mem = torch.cuda.get_device_properties(device).total_memory
+            used_mem = torch.cuda.max_memory_allocated(device)
+
+            if used_mem < total_mem * safety_margin:
+                best_size = mid
+                low = mid + 1
+            else:
+                high = mid - 1
+        except RuntimeError as e:
+            if "CUDA out of memory" in str(e):
+                high = mid - 1
+            else:
+                raise e
+
+    return max(1, best_size)

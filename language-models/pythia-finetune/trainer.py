@@ -1,24 +1,29 @@
 import os
 
 import torch
+import wandb
+from cluster import Clusters
 from datasets import load_dataset
-from torch.nn.utils import clip_grad_norm_
 from tqdm import tqdm
 from utils import clusterability, get_device
 
 
 class Trainer:
-    def __init__(self, model, tokenizer, batch_size, num_clusters):
+    def __init__(
+        self, model, tokenizer, batch_size, num_clusters, steps_to_cluster=150
+    ):
         self.model = model
         self.tokenizer = tokenizer
         self.num_layers = self.model.config.num_hidden_layers
         self.batch_size = batch_size
         self.num_clusters = num_clusters
         self.device = get_device()
-        self.max_grad_norm = 1.0
+        self.steps = 0
         self.val_freq = 100
+        self.steps_to_cluster = steps_to_cluster
         self.best_val_loss = float("inf")
         self.best_model_path = os.path.join("./checkpoints/", "best_model.pt")
+        self.cluster_dict = None
 
         # Set tokenizer cleanup behavior explicitly
         self.tokenizer.clean_up_tokenization_spaces = True
@@ -34,6 +39,15 @@ class Trainer:
         self.val_dataloader = self.prepare_dataloader(val_texts, shuffle=False)
 
         # wandb.init(project="pythia-finetune", entity="wandb")
+        wandb.init(project="pythia-finetune")
+        wandb.config.update(
+            {
+                "model_name": self.model.config.name_or_path,
+                "batch_size": self.batch_size,
+                "num_clusters": self.num_clusters,
+                "steps_to_cluster": self.steps_to_cluster,
+            }
+        )
 
     def prepare_dataloader(self, texts, batch_size=None, shuffle=True):
         """
@@ -87,11 +101,12 @@ class Trainer:
             drop_last=True,
         )
 
-    def train(self, cluster_dict, num_epochs=2, lr=5e-5):
+    def train(self, cluster_dict, num_epochs=2, lr=5e-7):
         path = "./checkpoints/"
         os.makedirs(path, exist_ok=True)
 
         self.model.train()
+        self.steps = 0
         optimizer = torch.optim.Adam(self.model.parameters(), lr=lr)
         cluster_metrics = {
             "train_losses": [],
@@ -129,6 +144,13 @@ class Trainer:
         progress_bar = tqdm(self.train_dataloader)
 
         for batch_idx, batch in enumerate(progress_bar):
+            if self.steps == self.steps_to_cluster:
+                # Recluster the model
+                self.cluster_dict = Clusters(
+                    self.model, self.tokenizer, num_clusters
+                ).forward()
+                print("Model has been reclustered.")
+
             input_ids, attention_mask = (
                 batch["input_ids"].to(self.device),
                 batch["attention_mask"].to(self.device),
@@ -140,16 +162,38 @@ class Trainer:
             )
 
             train_loss = outputs.loss
-            cluster_loss = self._compute_cluster_loss(cluster_dict, num_clusters)
-            loss = train_loss + lmd * cluster_loss  # Total loss (CE + enmeshment loss)
+            cluster_loss = (
+                self._compute_cluster_loss(self.cluster_dict, num_clusters)
+                if self.steps > self.steps_to_cluster
+                else torch.tensor(0.0)
+            )
+            loss = train_loss + lmd * cluster_loss
 
             loss.backward()
-            clip_grad_norm_(self.model.parameters(), self.max_grad_norm)
+            grads = [
+                param.grad.view(-1)
+                for param in self.model.parameters()
+                if param.grad is not None
+            ]
+            grad_norm = torch.norm(torch.cat(grads), 2).item() if grads else 0.0
+
             optimizer.step()
             optimizer.zero_grad()
 
             total_loss += train_loss.item()
-            total_cluster_loss += cluster_loss.item()
+            total_cluster_loss += (
+                cluster_loss.item() if cluster_loss else torch.tensor(0.0)
+            )
+
+            # Log to wandb
+            wandb.log(
+                {
+                    "train_loss": train_loss.item(),
+                    "cluster_loss": cluster_loss.item(),
+                    "grad_norm": grad_norm,
+                },
+                step=self.steps,
+            )
 
             if batch_idx % self.val_freq == 0:
                 val_metrics = self._validate_epoch(cluster_dict, num_clusters)
@@ -175,6 +219,7 @@ class Trainer:
                         "clusterability": f"{cluster_loss.item():.4f}",
                         "val_loss": f"{val_metrics['loss']:.4f}",
                         "best_val_loss": f"{self.best_val_loss:.4f}",
+                        "grad_norm": f"{grad_norm:.4f}",
                     }
                 )
             else:
@@ -182,8 +227,10 @@ class Trainer:
                     {
                         "train_loss": f"{train_loss.item():.4f}",
                         "clusterability": f"{cluster_loss.item():.4f}",
+                        "grad_norm": f"{grad_norm:.4f}",
                     }
                 )
+            self.steps += 1
 
         return {
             "loss": total_loss / len(self.train_dataloader),
