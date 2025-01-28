@@ -8,22 +8,37 @@ from config import Config
 # Login into huggingface_hub
 from huggingface_hub import login
 from trainer import Trainer
-from utils import autotune_batch_size
+from utils import autotune_batch_size, prepare_hub_name
 
-os.environ["HUGGINGFACE_TOKEN"] = AAA
-USER = BBB
+os.environ["HUGGINGFACE_TOKEN"] = XXXX
+USER = XXXX
 
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--lr", type=float, default=5e-5)
     parser.add_argument("--num_epochs", type=int, default=2)
+    parser.add_argument("--model_name", type=str, default="EleutherAI/pythia-70m")
     parser.add_argument(
-        "--model_name", type=str, default="EleutherAI/pythia-70m"
-    )  # Switch here for different models
+        "--enable_BSGC", action="store_true", help="Enable BSGC when flag is present"
+    )
     parser.add_argument(
-        "--enable_BSGC", type=bool, default=False
-    )  # defaulting to False for our purposes
+        "--do_modularity",
+        action="store_true",
+        help="Enable modularity when flag is present",
+    )
+    parser.add_argument(
+        "--mix_data", action="store_true", help="Train on both RAVEL and WIKI"
+    )
+
+    args = parser.parse_args()
+
+    # Validate BSGC and modularity dependency
+    if args.enable_BSGC and not args.do_modularity:
+        parser.error("--enable_BSGC requires --do_modularity to be enabled")
+
+    print(f"All arguments: {parser.parse_args()}")
+
     args = parser.parse_args()
     clusters_list = [4]
 
@@ -60,6 +75,8 @@ def main():
         )  # This is the dictionary containing U, V for each layer for a given k!
         svd_clusters_dict[num_clusters] = svd_dict  # Storing for dumping later
 
+        repo_id = prepare_hub_name(args, num_clusters, USER) + "FixCluster"
+
         # INITIALIZE TRAINER
         trainer = Trainer(
             model=model,
@@ -67,8 +84,11 @@ def main():
             batch_size=args.batch_size,
             num_clusters=num_clusters,
             steps_to_cluster=150,  # Play with this value to start clustering at a later moment!
-            model_name=args.model_name.split("/")[-1],
+            model_name=args.model_name.split("/")[-1] + "_lr_" + str(args.lr),
             enable_BSGC=args.enable_BSGC,
+            do_modularity=args.do_modularity,
+            mix_ravel=args.mix_data,
+            ckpt_name=repo_id,
         )
 
         # TRAIN THE MODEL WITH CLUSTERED WEIGHTS
@@ -81,20 +101,15 @@ def main():
         all_clusters_metrics[num_clusters] = cluster_metrics
 
         # Push model, tokenizer to huggingface
-        bsgc_string = "BSGC" if args.enable_BSGC else "NoBSGC"
-        trainer.model.push_to_hub(
-            f"{USER}/pythia-finetune-{args.model_name.split('/')[-1]}-clusters-{num_clusters}-{bsgc_string}"
-        )
-        trainer.tokenizer.push_to_hub(
-            f"{USER}/pythia-finetune-{args.model_name.split('/')[-1]}-clusters-{num_clusters}-{bsgc_string}"
-        )
+        trainer.model.push_to_hub(repo_id)
+        trainer.tokenizer.push_to_hub(repo_id)
 
     # DUMP THE SVD DICTIONARY
-    with open("svd_dict.pkl", "wb") as f:
+    with open(f"svd_dict_{args.model_name}_{args.lr}.pkl", "wb") as f:
         pkl.dump(svd_clusters_dict, f)
 
     # DUMP THE METRICS DICTIONARY
-    with open("metrics_dict.pkl", "wb") as f:
+    with open(f"metrics_dict{args.model_name}_{args.lr}.pkl", "wb") as f:
         pkl.dump(all_clusters_metrics, f)
 
 

@@ -1,3 +1,4 @@
+import json
 import os
 
 import torch
@@ -5,7 +6,7 @@ import wandb
 from cluster import Clusters
 from datasets import load_dataset
 from tqdm import tqdm
-from utils import clusterability, get_device
+from utils import clusterability, get_device, get_mlp_parameters
 
 
 class Trainer:
@@ -16,8 +17,11 @@ class Trainer:
         batch_size,
         num_clusters,
         model_name,
-        steps_to_cluster=150,
+        ckpt_name,
+        steps_to_cluster=0,
         enable_BSGC=False,
+        do_modularity=False,
+        mix_ravel=False,
     ):
         self.model = model
         self.tokenizer = tokenizer
@@ -30,14 +34,25 @@ class Trainer:
         self.steps_to_cluster = steps_to_cluster
         self.best_val_loss = float("inf")
         self.model_name = model_name
+        self.ckpt_name = ckpt_name
         self.best_model_path = os.path.join(
-            f"./checkpoints_{model_name}/", "best_model.pt"
+            f"./checkpoints_{ckpt_name}/", "best_model.pt"
         )
-        path = f"./checkpoints_{model_name}/"
+        path = f"./checkpoints_{ckpt_name}/"
         os.makedirs(path, exist_ok=True)
 
         self.cluster_dict = None
         self.enable_BSGC = enable_BSGC
+        self.do_modularity = do_modularity
+        self.mix_ravel = mix_ravel
+
+        print(f"Model name: {self.model_name}")
+        print(f"Number of layers: {self.num_layers}")
+        print(f"Number of clusters: {self.num_clusters}")
+        print(f"Steps to cluster: {self.steps_to_cluster}")
+        print(f"Enable BSGC: {self.enable_BSGC}")
+        print(f"Do modularity: {self.do_modularity}")
+
 
         # Set tokenizer cleanup behavior explicitly
         self.tokenizer.clean_up_tokenization_spaces = True
@@ -47,8 +62,25 @@ class Trainer:
         # Dataset preparation
         wiki_data_train = load_dataset("wikitext", "wikitext-2-v1", split="train")
         wiki_data_val = load_dataset("wikitext", "wikitext-2-v1", split="validation")
+
+        if self.mix_ravel:
+            print("Mixing RAVEL data with the training data")
+            # Add RAVEL to the training data
+            with open("/data/joan_velja/nn-modularity/language-models/pythia-finetune/gpt2_prompt_data.json", "r") as f:
+                ravel_data = json.load(f)
+                # ravel_data is a dict of (entity-target) key and list((prompt, response)) value
+                # Extract the prompts and responses
+                ravel_texts = [
+                    item[0] + ' ' + item[1] for sublist in ravel_data.values() for item in sublist
+                ]
+            
+
         train_texts = [text for text in wiki_data_train["text"] if text.strip()]
         val_texts = [text for text in wiki_data_val["text"] if text.strip()]
+
+        if self.mix_ravel: # Mix RAVEL data with the training data
+            train_texts += ravel_texts
+    
         self.train_dataloader = self.prepare_dataloader(train_texts)
         self.val_dataloader = self.prepare_dataloader(val_texts, shuffle=False)
 
@@ -60,6 +92,8 @@ class Trainer:
                 "batch_size": self.batch_size,
                 "num_clusters": self.num_clusters,
                 "steps_to_cluster": self.steps_to_cluster,
+                "enable_BSGC": self.enable_BSGC,
+                "do_modularity": self.do_modularity,
             }
         )
 
@@ -155,7 +189,9 @@ class Trainer:
         progress_bar = tqdm(self.train_dataloader)
 
         for batch_idx, batch in enumerate(progress_bar):
-            if self.steps == self.steps_to_cluster:
+            cluster_loss = torch.tensor(0.0)
+
+            if self.steps == self.steps_to_cluster and self.do_modularity:
                 # Recluster the model
                 self.cluster_dict = Clusters(
                     self.model,
@@ -176,11 +212,8 @@ class Trainer:
             )
 
             train_loss = outputs.loss
-            cluster_loss = (
-                self._compute_cluster_loss(self.cluster_dict, num_clusters)
-                if self.steps > self.steps_to_cluster
-                else torch.tensor(0.0)
-            )
+            if self.do_modularity and self.steps > self.steps_to_cluster:
+                cluster_loss = self._compute_cluster_loss(self.cluster_dict, num_clusters)
             loss = train_loss + lmd * cluster_loss
 
             loss.backward()
@@ -258,6 +291,7 @@ class Trainer:
         total_cluster_loss = 0
 
         for batch in self.val_dataloader:
+            cluster_loss = torch.tensor(0.0)
             input_ids, attention_mask = (
                 batch["input_ids"].to(self.device),
                 batch["attention_mask"].to(self.device),
@@ -270,7 +304,8 @@ class Trainer:
             )
 
             val_loss = outputs.loss
-            cluster_loss = self._compute_cluster_loss(cluster_dict, num_clusters)
+            if self.do_modularity and self.steps > self.steps_to_cluster:
+                cluster_loss = self._compute_cluster_loss(cluster_dict, num_clusters)
 
             total_loss += val_loss.item()
             total_cluster_loss += cluster_loss.item()
@@ -281,16 +316,17 @@ class Trainer:
         }
 
     def _compute_cluster_loss(self, cluster_dict, num_clusters):
-        blocks_to_cluster = [
-            self.model.gpt_neox.layers[
-                layer_idx
-            ].mlp.dense_h_to_4h.weight  # This is pythia-specific, ideally should be abstracted
-            for layer_idx in range(self.num_layers)
-        ]
+        # blocks_to_cluster = [
+        #     self.model.gpt_neox.layers[
+        #         layer_idx
+        #     ].mlp.dense_h_to_4h.weight  # This is pythia-specific, ideally should be abstracted
+        #     for layer_idx in range(self.num_layers)
+        # ]
+        blocks_to_cluster = get_mlp_parameters(self.model, "in")
 
         UVs = [cluster_dict[i] for i in range(self.num_layers)]
         return sum(
-            clusterability(block, X[0], X[1], num_clusters)
+            clusterability(block, X[0], X[1], num_clusters, is_gpt="gpt" in self.model_name)
             for block, X in zip(blocks_to_cluster, UVs)
         ) / len(blocks_to_cluster)
 
@@ -307,5 +343,5 @@ class Trainer:
         }
         torch.save(
             checkpoint,
-            f"./checkpoints_{self.model_name}/model_cluster_{num_clusters}_epoch_{epoch}.pt",
+            f"./checkpoints_{self.ckpt_name}/model_cluster_{num_clusters}_epoch_{epoch}.pt",
         )
