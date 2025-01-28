@@ -1,4 +1,4 @@
-from utils import spectral_clustering
+from utils import get_mlp_parameters, spectral_clustering
 
 
 class Clusters:
@@ -11,12 +11,11 @@ class Clusters:
 
     def forward(self):
         svd_dict = {}
+        blocks_to_cluster = get_mlp_parameters(self.model, "in")
         for layer_idx in range(self.num_layers):
             U, V = (
                 spectral_clustering(
-                    self.model.gpt_neox.layers[
-                        layer_idx
-                    ].mlp.dense_h_to_4h.weight,  # This is pythia-specific, ideally should be abstracted
+                    blocks_to_cluster[layer_idx],
                     self.num_clusters,
                 )
                 if self.BSGC
