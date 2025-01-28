@@ -8,7 +8,7 @@ from config import Config
 # Login into huggingface_hub
 from huggingface_hub import login
 from trainer import Trainer
-from utils import autotune_batch_size, prepare_hub_name
+from utils import autotune_batch_size, prepare_hub_name, sanitize_filename
 
 os.environ["HUGGINGFACE_TOKEN"] = XXXX
 USER = XXXX
@@ -104,12 +104,15 @@ def main():
         trainer.model.push_to_hub(repo_id)
         trainer.tokenizer.push_to_hub(repo_id)
 
+    # SANITIZE MODEL NAME
+    sanitized_model_name = sanitize_filename(repo_id)
+
     # DUMP THE SVD DICTIONARY
-    with open(f"svd_dict_{args.model_name}_{args.lr}.pkl", "wb") as f:
+    with open(f"svd_dict_{sanitized_model_name}.pkl", "wb") as f:
         pkl.dump(svd_clusters_dict, f)
 
     # DUMP THE METRICS DICTIONARY
-    with open(f"metrics_dict{args.model_name}_{args.lr}.pkl", "wb") as f:
+    with open(f"metrics_dict_{sanitized_model_name}.pkl", "wb") as f:
         pkl.dump(all_clusters_metrics, f)
 
 
