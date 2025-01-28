@@ -9,10 +9,12 @@ from tqdm import tqdm
 import yaml
 from matplotlib import pyplot as plt
 import seaborn as sns
+import yaml
 
 
 from transformer_lens.evals import make_wiki_data_loader
 from transformer_lens.HookedTransformer import HookedTransformer
+from transformers import GPTNeoXForCausalLM, AutoTokenizer, AutoModelForCausalLM
 import logging
 import os
 import pickle as pkl
