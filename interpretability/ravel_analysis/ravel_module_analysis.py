@@ -1,31 +1,45 @@
+import os
+import sys
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir)))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
+
 from __init__ import *
 
 
 def config_(args):
-    model =  GPT2Model.from_pretrained('gpt2')
     
-    model_nmod = HookedTransformer.from_pretrained('gpt2-small')
-    model_mod = HookedTransformer.from_pretrained('gpt2-small')
-    tokenizer = transformers.GPT2Tokenizer.from_pretrained('gpt2')
-
-    device = torch.device(args.device)
-
-    model_nmod.load_state_dict(torch.load('interp-gains-gpt2small/data/models/wiki_non_modular_mlp_in_out.pt', map_location=device, weights_only=True))
-    model_mod.load_state_dict(torch.load('interp-gains-gpt2small/data/models/wiki_fully_modular_mlp_in_out.pt', map_location=device, weights_only=True))
-
-    logging.basicConfig(filename = 'interp-gains-gpt2small/logs/model_analysis.log',
-                        level=logging.INFO, 
-                        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-
-    model_nmod.to(device)
-    model_mod.to(device)
-    logging.info(model_nmod)
+    with open("interpretability/ravel_analysis/config.yaml", "r") as f:
+        config = yaml.safe_load(f)
     
-    return model_nmod, model_mod, tokenizer, device
-
-
-def nps(arr_):
-    pprint(np.array(arr_).shape)
+    #TODO: make it generalisable for different type of models, so the model names can be give in parser
+    #TODO: similarly the data to be operated upon needs to be reloaded again and again, so also goes into parser
+    
+    print(args.model)
+    
+    if args.model == "gpt2":
+        model = HookedTransformer.from_pretrained(config[args.model]['model_name'])
+        tokenizer = transformers.GPT2Tokenizer.from_pretrained(config[args.model]['tokenizer_name'])
+        model.load_state_dict(torch.load(config[args.model][args.modeltype], map_location=args.device, weights_only=True))
+        data = config[args.model]['data']
+        
+    else:
+        model = AutoModelForCausalLM.from_pretrained(config[args.model][args.modeltype], map_location=args.device)
+        tokenizer = AutoTokenizer.from_pretrained(config[args.model]['tokenizer_name'])
+        samples = pkl.load(open(config[args.model]['data'], "rb"))
+        data = config[args.model]['data']
+    
+    samples_ = pkl.load(open(data, "rb"))
+    samples = samples_[args.entity]['retained']
+        
+    logging.basicConfig(filename = config[args.model]['log_file'],
+                    level=logging.INFO, 
+                    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    logging.info(model)
+    
+    
+    return model, tokenizer, args.device, samples, config
 
 
 def intervention(args, index, module, func = "analysis"):
@@ -42,7 +56,7 @@ def intervention(args, index, module, func = "analysis"):
     For many layers we can focus on type 2 intervention.
     '''
     
-    model_nmod, model_mod, tokenizer, device = config_(args)
+    model, tokenizer, device, samples, config = config_(args)
 
     def hook_fn(module, input, output):
         mod_output = output.clone()
@@ -57,24 +71,19 @@ def intervention(args, index, module, func = "analysis"):
             output = mod_output
             return output
 
-    hook_ = model_nmod.blocks[args.num_layer].mlp.hook_pre.register_forward_hook(hook_fn)
+    hook_ = model.blocks[args.num_layer].mlp.hook_pre.register_forward_hook(hook_fn)
     
     
     
-    def analysis(args,module):
-        
-        try:
-            with open(f"interp-gains-gpt2small/data/cropped_nmodel_dataset_last_token.pkl", "rb") as f:
-                samples = pkl.load(f)   
-        except:
-            dataset_prepartion(args)
+    def analysis(args, module, samples, config):
         
         correct = 0; total = 0
         prediction = []
         correct_samples = []
         for sample_idx in tqdm(range(len(samples))):
-            sample = samples[sample_idx].to(device)
-            logits = model_nmod(sample)
+            encoded = tokenizer.encode(samples[sample_idx][0], return_tensors="pt")
+            sample = encoded.to(device)
+            logits = model(sample)
             predicted_string = []
             # comparing second last token of generated sentence with last token of ground truth word
             if sample[:,-1].item() == logits[:,-2,:].argmax(dim = -1).item(): 
@@ -83,14 +92,15 @@ def intervention(args, index, module, func = "analysis"):
             else:
                 prediction.append(0)
 
-        with open(f"interp-gains-gpt2small/data/prediction_nmodel_{args.type_of_intervention}_layer{args.num_layer}_{module}.pkl", "wb") as f:
+        os.makedirs(f"{config[args.model]['data_path']}/{args.modeltype}", exist_ok=True)
+        with open(f"{config[args.model]['data_path']}/{args.modeltype}/prediction_{args.type_of_intervention}_layer{args.num_layer}_{module}.pkl", "wb") as f:
             pkl.dump(prediction, f)
         
-        with open(f"interp-gains-gpt2small/data/samples_nmodel_{args.type_of_intervention}_layer{args.num_layer}_{module}.pkl", "wb") as f:
+        with open(f"{config[args.model]['data_path']}/{args.modeltype}/samples_{args.type_of_intervention}_layer{args.num_layer}_{module}.pkl", "wb") as f:
             pkl.dump(correct_samples, f)    
     
     
-    def final_analysis(args):
+    def final_analysis(args, config):
         
         final_dict = {}
         mean_acc = []
@@ -99,8 +109,10 @@ def intervention(args, index, module, func = "analysis"):
         
         for module in ["mod1", "mod2", "mod3", "mod4"]:
             
-            with open(f"interp-gains-gpt2small/data/prediction_{args.type_of_intervention}_layer{args.num_layer}_{module}.pkl", "rb") as f:
+            with open(f"{config[args.model]['data_path']}/{args.modeltype}/prediction_{args.type_of_intervention}_layer{args.num_layer}_{module}.pkl", "rb") as f:
                 prediction = pkl.load(f)
+            
+            print(prediction)
             
             final_dict[module] = prediction
             
@@ -113,8 +125,8 @@ def intervention(args, index, module, func = "analysis"):
         
         plt.legend()
         plt.grid(True)
-        os.makedirs("interp-gains-gpt2small/plots/nmodel", exist_ok=True)
-        plt.savefig(f"interp-gains-gpt2small/plots/nmodel/{args.type_of_intervention}_layer{args.num_layer}_accuracy.png", dpi = 300)
+        os.makedirs(f"{config[args.model]['plot_path']}/{args.modeltype}", exist_ok=True)
+        plt.savefig(f"{config[args.model]['plot_path']}/{args.modeltype}/{args.type_of_intervention}_layer{args.num_layer}_accuracy.png", dpi = 300)
         plt.close()
         
         # visualize(final_dict)
@@ -143,8 +155,11 @@ def intervention(args, index, module, func = "analysis"):
         ]
 
         # Unzipping the filtered tuples back into separate lists
-        list1_filtered, list2_filtered, list3_filtered, list4_filtered = map(list, zip(*filtered_lists))
-        
+        try:
+            list1_filtered, list2_filtered, list3_filtered, list4_filtered = map(list, zip(*filtered_lists))
+            no_graph = 0
+        except: 
+            no_graph = 1
         
         def old_graph():
             '''
@@ -163,7 +178,8 @@ def intervention(args, index, module, func = "analysis"):
             plt.title('Spike denotes when a module is turned off the accuracy for sample goes down', size=16)
             plt.legend()
             plt.grid(True)
-            plt.savefig(f"interp-gains-gpt2small/plots/{args.type_of_intervention}_layer{args.num_layer}_effect.png", dpi = 300)
+            os.makedirs(f"{config[args.model]['plot_path']}/{args.modeltype}", exist_ok=True)
+            plt.savefig(f"{config[args.model]['plot_path']}/{args.modeltype}/{args.type_of_intervention}_layer{args.num_layer}_effect.png", dpi = 300)
             plt.close()
         
         def get_contrasting_color(hex_color):
@@ -248,13 +264,16 @@ def intervention(args, index, module, func = "analysis"):
             plt.title("Effect of Modules on Samples", pad=20)  # Add padding to title for spacing
 
             # Save the figure
-            output_path = f"interp-gains-gpt2small/plots/pie_chart/{args.type_of_intervention}_layer{args.num_layer}_pie.png"
+            output_path = f"{config[args.model]['plot_path']}/{args.modeltype}/pie_chart"
+            os.makedirs(output_path, exist_ok=True)
             plt.tight_layout()  # Adjust layout to prevent clipping
-            plt.savefig(output_path, dpi=400, bbox_inches='tight', format='png')  # High DPI for professional quality
+            plt.savefig(f"{output_path}/{args.type_of_intervention}_layer{args.num_layer}_pie.png", dpi=400, bbox_inches='tight', format='png')  # High DPI for professional quality
             plt.close()
-
-        pie_chart()
         
+        if no_graph == 1:
+            pass
+        else:
+            pie_chart()
 
 
     
@@ -267,7 +286,7 @@ def intervention(args, index, module, func = "analysis"):
                                     total=len(make_wiki_data_loader(tokenizer, batch_size=args.batch_size)))):
             
             data = data_['tokens'].to(device)
-            logits = model_mod(data)
+            logits = model(data)
             if data[:,-1].item() == logits[:,-2,:].argmax(dim = -1).item():
                 correct+=1
                 samples.append(data)
@@ -278,25 +297,28 @@ def intervention(args, index, module, func = "analysis"):
             
         hook_.remove()
         
-        os.makedirs("interp-gains-gpt2small/data", exist_ok=True)
-        with open(f"interp-gains-gpt2small/data/cropped_nmodel_dataset_last_token.pkl", "wb") as f:
+        os.makedirs(f"interp-gains-gpt2small/data/{args.modeltype}", exist_ok=True)
+        with open(f"interp-gains-gpt2small/data/{args.modeltype}/cropped_dataset_last_token.pkl", "wb") as f:
             pkl.dump(samples, f)
         
         return correct/total
     
     
     if func == "analysis":
-        _ = analysis(args,module)
+        _ = analysis(args = args,
+                    module = module, 
+                    samples = samples, 
+                    config = config)
         
     elif func == "final_analysis":
-        final_analysis(args)
+        final_analysis(args, config)
     
 
-def visualize():
-    folder_paths = ["interp-gains-gpt2small/plots/nmodel/pie_chart/type1",
-                    "interp-gains-gpt2small/plots/nmodel/pie_chart/type2",
-                    "interp-gains-gpt2small/plots/pie_chart/type1",
-                    "interp-gains-gpt2small/plots/pie_chart/type2"]
+def visualize(config, args):
+    folder_paths = [f"{config[args.model]['plot_path']}/{args.modeltype}/pie_chart/type1",
+                    f"{config[args.model]['plot_path']}/{args.modeltype}/pie_chart/type2",
+                    f"{config[args.model]['plot_path']}/{args.modeltype}/pie_chart/type1",
+                    f"{config[args.model]['plot_path']}/{args.modeltype}/pie_chart/type2"]
     
     for folder_path in folder_paths:
         # List all image files in the folder
@@ -333,6 +355,9 @@ def main():
     parser.add_argument('--batch_size', type=int, default=1)
     parser.add_argument('--num_layer', type=int, default=6)
     parser.add_argument('--type_of_intervention', type=str, required=True)
+    parser.add_argument('--model', type=str, required=True)
+    parser.add_argument('--entity', type=str, required=True)
+    parser.add_argument('--modeltype', type=str, required=True)
     
     args = parser.parse_args()
     
@@ -356,21 +381,24 @@ def main():
     
     
     
-    # for i in tqdm(range(4)):
-    #     if i == 0:
-    #         print(f"Intervention using the index {i} on layer {args.num_layer}")
-    #         intervention(args, index1, module = "mod1")
-    #     elif i == 1:
-    #         print(f"Intervention using the index {i} on layer {args.num_layer}")
-    #         intervention(args, index2, module = "mod2")
-    #     elif i == 2:
-    #         print(f"Intervention using the index {i} on layer {args.num_layer}")
-    #         intervention(args, index3, module = "mod3")
-    #     elif i == 3:
-    #         print(f"Intervention using the index {i} on layer {args.num_layer}")
-    #         intervention(args, index4, module="mod4")
-    #         intervention(args, index4, module="mod4", func = "final_analysis")
-    visualize()
+    for i in tqdm(range(4)):
+        if i == 0:
+            print(f"Intervention using the index {i} on layer {args.num_layer}")
+            intervention(args, index1, module = "mod1")
+        elif i == 1:
+            print(f"Intervention using the index {i} on layer {args.num_layer}")
+            intervention(args, index2, module = "mod2")
+        elif i == 2:
+            print(f"Intervention using the index {i} on layer {args.num_layer}")
+            intervention(args, index3, module = "mod3")
+        elif i == 3:
+            print(f"Intervention using the index {i} on layer {args.num_layer}")
+            intervention(args, index4, module="mod4")
+            intervention(args, index4, module="mod4", func = "final_analysis")
+    
+    
+    model, tokenizer, device, samples, config = config_(args)
+    # visualize(config, args)
 
 
 
