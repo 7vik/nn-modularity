@@ -39,9 +39,9 @@ class intervention:
             model.load_state_dict(torch.load(config[self.args.model][self.args.modeltype], map_location=self.args.device, weights_only=True))
             
         else:
-            model = AutoModelForCausalLM.from_pretrained(config[self.args.model][self.args.modeltype], map_location=self.args.device)
+            model = AutoModelForCausalLM.from_pretrained(config[self.args.model][self.args.modeltype], device_map=self.args.device)
             tokenizer = AutoTokenizer.from_pretrained(config[self.args.model]['tokenizer_name'])
-            samples = pkl.load(open(config[self.args.model]['data'], "rb"))
+            # samples = pkl.load(open(config[self.args.model]['data'], "rb"))
 
             
         logging.basicConfig(filename = config[self.args.model]['log_file'],
@@ -61,9 +61,12 @@ class intervention:
         correct_samples = []
         for sample_idx in tqdm(range(len(samples))):
             sample = samples[sample_idx].to(self.device)
-            logits = self.model(sample)
             predicted_string = []
             # comparing second last token of generated sentence with last token of ground truth word
+            if self.args.model == "pythia70m" or "pythia1.4b":
+                logits = self.model(sample)[0]
+            elif self.args.model == "gpt2":
+                logits = self.model(sample)
             if sample[:,-1].item() == logits[:,-2,:].argmax(dim = -1).item(): 
                 prediction.append(1)
                 correct_samples.append(sample)
@@ -257,7 +260,10 @@ class intervention:
                                     total=len(make_wiki_data_loader(self.tokenizer, batch_size=self.args.batch_size)))):
             
             data = data_['tokens'].to(self.device)
-            logits = self.model(data)
+            if self.args.model == "pythia70m" or "pythia1.4b":
+                logits = self.model(data)[0]
+            elif self.args.model == "gpt2":
+                logits = self.model(data)
             if data[:,-1].item() == logits[:,-2,:].argmax(dim = -1).item():
                 correct+=1
                 samples.append(data)
@@ -272,7 +278,7 @@ class intervention:
         with open(f"interpretability/module_analysis/data/{self.args.model}/{self.args.modeltype}/cropped_dataset_last_token.pkl", "wb") as f:
             pkl.dump(samples, f)
         
-        return correct/total
+        return samples
     
     
     def hook(self, index):
@@ -289,18 +295,20 @@ class intervention:
                 output = mod_output
                 return output
 
-        self.hook_ = self.model.blocks[self.args.num_layer].mlp.hook_pre.register_forward_hook(hook_fn)
-    
+        if self.args.model == "pythia70m" or "pythia1.4b":
+            self.hook_ = self.model.gpt_neox.layers[self.args.num_layer].mlp.dense_h_to_4h.register_forward_hook(hook_fn)
+        elif self.args.model == "gpt2":
+            self.hook_ = self.model.transformer.h[self.args.num_layer].mlp.hook_pre.register_forward_hook(hook_fn)
     
     def forward(self, index, module, func = "analysis"):
         
         self.model, self.tokenizer, self.device, self.config = self.config_()
         self.hook(index)
         try:
-            with open(f"interpretability/module_analysis/data/{self.args.model}/cropped_dataset_last_token.pkl", "rb") as f:
+            with open(f"interpretability/module_analysis/data/{self.args.model}/{self.args.modeltype}/cropped_dataset_last_token.pkl", "rb") as f:
                 samples = pkl.load(f)   
         except:
-            self.dataset_prepartion()
+            samples = self.dataset_prepartion()
             
         
         
