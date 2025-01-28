@@ -12,7 +12,7 @@ for model in "${models[@]}"; do
         for type in "${type_intervention[@]}"; do
             for modeltype in "${model_types[@]}"; do
             echo "Running module analysis for $model for layer $layer $type and entity $entity and model type $modeltype"
-            python interpretability/module_analysis/module_analysis.py --device "mps" --num_layer $layer --type_of_intervention $type --model "$model" --entity "$entity" --modeltype "$modeltype"
+            python interpretability/module_analysis/module_analysis.py --device "cuda" --num_layer $layer --type_of_intervention $type --model "$model" --entity "$entity" --modeltype "$modeltype"
                 # done
             done
         done
