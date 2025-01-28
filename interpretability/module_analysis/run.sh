@@ -4,6 +4,7 @@ models=("pythia70m" "pythia1.4b")
 
 type_intervention=("type1" "type2")
 
+# model_types=("model" "nmodel")
 model_types=("model")
 
 for model in "${models[@]}"; do
