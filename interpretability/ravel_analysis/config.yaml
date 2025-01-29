@@ -8,7 +8,7 @@ gpt2:
   nmodel: jvelja/pythia-finetune-gpt2-NoBSGC-lr_0.0005-NoModularity-RAVEL_MIXEDFixCluster
   log_file: interpretability/logs/gpt2_model_analysis_on_ravel.log
   plot_path: interpretability/ravel_analysis/plots/gpt2
-  data_path: interpretability/ravel_analysis/data/gpt2
+  data_path: interpretability/ravel_analysis/data/gpt2_prompt_data.pkl
 
 
 #TODO: please change the path of the non-modular models for pythia. 
@@ -21,7 +21,7 @@ pythia70m:
   nmodel: jvelja/pythia-finetune-pythia-70m-NoBSGC-lr_5e-05-NoModularity-RAVEL_MIXEDFixCluster
   log_file: interpretability/logs/pythia70m_model_analysis_on_ravel.log
   plot_path: interpretability/ravel_analysis/plots/pythia70m
-  data_path: interpretability/ravel_analysis/data/pythia70m
+  data_path: interpretability/ravel_analysis/data/pythia-70m_prompt_data
 
 
 # pythia1.4b:

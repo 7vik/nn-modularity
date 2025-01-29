@@ -1,6 +1,7 @@
 entities=("city-country" "city-continent" "city-language" "object-size")
 
 layers=(2 5 6 7 10)
+# layers=(0 1 2 3 4 5)
 
 models=("gpt2" "pythia70m" "pythia1.4b")
 
@@ -14,7 +15,7 @@ for model in "${models[@]}"; do
             for type in "${type_intervention[@]}"; do
                 for modeltype in "${model_types[@]}"; do
                 echo "Running module analysis for $model for layer $layer $type and entity $entity and model type $modeltype"
-                python interpretability/ravel_analysis/ravel_module_analysis.py --device "mps" --num_layer $layer --type_of_intervention $type --model "$model" --entity "$entity" --modeltype "$modeltype"
+                python interpretability/ravel_analysis/ravel_module_analysis.py --device "cuda" --num_layer $layer --type_of_intervention $type --model "$model" --entity "$entity" --modeltype "$modeltype"
                 done
             done
         done

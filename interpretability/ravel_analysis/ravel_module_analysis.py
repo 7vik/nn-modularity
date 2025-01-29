@@ -38,6 +38,7 @@ class intervention:
             tokenizer = transformers.GPT2Tokenizer.from_pretrained(config[self.args.model]['tokenizer_name'])
             # model.load_state_dict(torch.load(config[self.args.model][self.args.modeltype], map_location=self.args.device, weights_only=True))
             model = AutoModelForCausalLM.from_pretrained(config[self.args.model][self.args.modeltype], device_map=self.args.device)
+            samples = pkl.load(open(config[self.args.model]['data_path'], "rb"))
 
         else:
             model = AutoModelForCausalLM.from_pretrained(config[self.args.model][self.args.modeltype], device_map=self.args.device)
@@ -60,6 +61,7 @@ class intervention:
         correct = 0; total = 0
         prediction = []
         correct_samples = []
+        print(samples_)
         samples = samples_[config[self.args.entity]]['retained']
         for sample_idx in tqdm(range(len(samples))):
             encoded = tokenizer(samples[sample_idx][0], return_tensors = "pt")
@@ -299,14 +301,16 @@ class intervention:
                 output = mod_output
                 return output
 
-        if self.args.model == "pythia70m" or "pythia1.4b":
+        if self.args.model == "pythia70m" or self.args.model == "pythia1.4b":
             self.hook_ = self.model.gpt_neox.layers[self.args.num_layer].mlp.dense_h_to_4h.register_forward_hook(hook_fn)
         elif self.args.model == "gpt2":
-            self.hook_ = self.model.transformer.h[self.args.num_layer].mlp.hook_pre.register_forward_hook(hook_fn)
+            print(self.model)
+            self.hook_ = self.model.transformer.h[self.args.num_layer].mlp.c_fc.register_forward_hook(hook_fn)
     
     def forward(self, index, module, func = "analysis"):
 
         self.model, tokenizer, self.device, self.config, samples = self.config_()
+        print(self.args.model)
         self.hook(index)
             
         
@@ -314,7 +318,7 @@ class intervention:
         if func == "analysis":
             _ = self.analysis(args = self.args,
                             module = module, 
-                            samples = samples, 
+                            samples_ = samples, 
                             config = self.config,
                             tokenizer = tokenizer
                             )
@@ -322,8 +326,7 @@ class intervention:
             
         elif func == "final_analysis":
             self.final_analysis(self.args, self.config)
-            
-            
+            self.pie_chart()
     
 
 def visualize(config, args):
