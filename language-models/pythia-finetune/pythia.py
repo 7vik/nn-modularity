@@ -1,160 +1,119 @@
 import argparse
+import os
 import pickle as pkl
 
-import torch
-from tqdm import tqdm
-from transformers import AutoModelForCausalLM, AutoTokenizer
-from utils import clusterability, get_device, set_all_seeds, spectral_clustering
-from transformer_lens.evals import make_wiki_data_loader
+from cluster import Clusters
+from config import Config
 
+# Login into huggingface_hub
+from huggingface_hub import login
+from trainer import Trainer
+from utils import autotune_batch_size, prepare_hub_name, sanitize_filename
 
-class Config:
-    def __init__(self):
-        self.model_name = "EleutherAI/pythia-70m"
-
-    def config(self) -> tuple[AutoModelForCausalLM, AutoTokenizer, list[int]]:
-        device = get_device()
-        model = AutoModelForCausalLM.from_pretrained(self.model_name).to(device)
-        tokenizer = AutoTokenizer.from_pretrained(self.model_name)
-        cluster_set = list(range(2, 21))
-        return model, tokenizer, cluster_set
-
-    def forward(self):
-        set_all_seeds(42, warn_only=True)
-        model, tokenizer, num_clusters = self.config()
-        return model, tokenizer, num_clusters
-
-
-class Clusters:
-    def __init__(self, model, tokenizer, num_clusters):
-        self.model = model
-        self.tokenizer = tokenizer
-        self.num_clusters = num_clusters
-        self.num_layers = self.model.config.num_hidden_layers
-
-    def forward(self):
-        svd_cluster_dict = {cluster_idx: {} for cluster_idx in self.num_clusters}
-        for cluster in tqdm(self.num_clusters):
-            for layer_idx in range(self.num_layers):
-                U, V = spectral_clustering(
-                    self.model.gpt_neox.layers[
-                        layer_idx
-                    ].mlp.dense_h_to_4h.weight,  # This is pythia-specific, ideally should be abstracted
-                    cluster,
-                )
-                svd_cluster_dict[cluster][layer_idx] = (U, V)
-
-        with open("svd_dict.pkl", "wb") as f:
-            pkl.dump(svd_cluster_dict, f)
-
-        print("SVD clustering done!")
-        print("Saved the SVD dictionary to svd_dict.pkl")
-        return svd_cluster_dict
-
-
-class Trainer:
-    def __init__(self, model, tokenizer, num_clusters, batch_size):
-        self.model = model
-        self.tokenizer = tokenizer
-        self.num_clusters = num_clusters
-        self.num_layers = self.model.config.num_hidden_layers
-        self.batch_size = batch_size
-        self.device = get_device()
-
-    def train(self, cluster_dict):
-        cluster_losses = []
-        train_losses = []
-        lomda = 40.0  # Feels iffy
-        blocks_to_cluster = [
-            self.model.gpt_neox.layers[layer_idx].mlp.dense_h_to_4h.weight
-            for layer_idx in range(self.num_layers)
-        ]  # This is pythia-specific, ideally should be abstracted
-        path = "./checkpoints/"
-        num_epochs = 2
-        optimizer = torch.optim.Adam(self.model.parameters(), lr=1e-4)
-        self.model.train()
-        keys = list(range(self.num_layers))  # keys of cluster_dict
-
-        # cluster_dict[0]
-
-        # Added the loop for each cluster.
-        for cluster in self.num_clusters:
-            for epoch in range(num_epochs):
-                # Added the dataset here.
-                wiki = make_wiki_data_loader(self.tokenizer, batch_size=self.batch_size)
-                for idx, batch in enumerate(wiki.dataset['tokens']):
-                    #TODO: convert these tokens from GPT-2 to string.
-                    #TODO: convert that string to tokens (tensor) using pythia tokenizer
-                    #TODO: the loss cannot be computed as written in 101, as it is not hookedtransformer
-                    tokens = batch.to(self.device)
-                    print(tokens)
-
-                    # CLUSTERABILITY LOSS
-                    UVs = [
-                        cluster_dict[i] for i in keys
-                    ]  # list of tuples of U, V for each layer (len = num_layers)
-                    cluster_loss = sum(
-                        [
-                            clusterability(block, X[0], X[1],cluster)
-                            for (block, X) in zip(blocks_to_cluster, UVs)
-                        ]
-                    ) / len(blocks_to_cluster)
-
-                    # train_loss = self.model(tokens, return_type="loss")
-                    output = self.model(**tokens)
-                    cluster_losses.append(cluster_loss.item())
-                    train_losses.append(train_loss.item())
-                    loss = train_loss - lomda * cluster_loss
-                    optimizer.zero_grad()
-                    loss.backward()
-                    optimizer.step()
-                    if idx % 100 == 0:
-                        print(
-                            f"Epoch {epoch + 1}, Batch {idx}, Train Loss: {round(train_loss.item(), 4)}, Clusterability: {round(cluster_loss, 4)}"
-                        )
-                torch.save(
-                    self.model.state_dict(),
-                    path + f"wiki_non_modular_mlp_in_model_epoch_{epoch + 1}.pt",
-                )
-
-            # store the cluster losses and train losses
-            with open(path + f"wiki_non_modular_mlp_in_cluster{cluster}_losses.pkl", "wb") as f:
-                pkl.dump(cluster_losses, f)
-            with open(path + f"wiki_non_modular_mlp_in_cluster{cluster}_train_losses.pkl", "wb") as f:
-                pkl.dump(train_losses, f)
+os.environ["HUGGINGFACE_TOKEN"] = XXXX
+USER = XXXX
 
 
 def main():
     parser = argparse.ArgumentParser()
-    # parser.add_argument("--model_name", type=str, default="EleutherAI/pythia-70m")
-    parser.add_argument("--batch_size", type=int, default=8)
+    parser.add_argument("--lr", type=float, default=5e-5)
+    parser.add_argument("--num_epochs", type=int, default=2)
+    parser.add_argument("--model_name", type=str, default="EleutherAI/pythia-70m")
+    parser.add_argument(
+        "--enable_BSGC", action="store_true", help="Enable BSGC when flag is present"
+    )
+    parser.add_argument(
+        "--do_modularity",
+        action="store_true",
+        help="Enable modularity when flag is present",
+    )
+    parser.add_argument(
+        "--mix_data", action="store_true", help="Train on both RAVEL and WIKI"
+    )
+
     args = parser.parse_args()
-    c = Config()
-    model, tokenizer, num_clusters = c.forward()
-    # cl = Clusters(model, tokenizer, num_clusters)
-    # svd = cl.forward()
 
-    trainer = Trainer(model, tokenizer, num_clusters, batch_size=args.batch_size)
+    # Validate BSGC and modularity dependency
+    if args.enable_BSGC and not args.do_modularity:
+        parser.error("--enable_BSGC requires --do_modularity to be enabled")
 
-    with open("svd_dict.pkl", "rb") as f:
-        svd_dict = pkl.load(f)
+    print(f"All arguments: {parser.parse_args()}")
 
-    for (
-        cluster_value,
-        cluster_dict,
-    ) in svd_dict.items():  # Loop through num_clusters (keys of svd_dict) noqa
-        # for key, value in svd_dict[cluster_value].items():
-        #     # pprint(value)
-        #     U, V = value
-        # break
-        print(f"C: {cluster_value}")
-        print(
-            f"CD: {cluster_dict.keys()}"
-        )  # cluster_dict.keys() is a list of layer indices, each containing U, V indices pair for that layer
-        print("---" * 10)
-        # cluster_dict[0] == tuple(U, V)
+    args = parser.parse_args()
+    clusters_list = [4]
 
-        trainer.train(cluster_dict)
+    # Login to huggingface
+    login(token=os.environ["HUGGINGFACE_TOKEN"])
+
+    svd_clusters_dict = {
+        cluster_idx: {} for cluster_idx in clusters_list
+    }  # contains (U, V for each layer) for each cluster
+
+    # Dictionary to store metrics per cluster
+    all_clusters_metrics = {
+        num_clusters: {"train_losses": [], "cluster_losses": [], "val_losses": []}
+        for num_clusters in clusters_list
+    }
+
+    for num_clusters in clusters_list:  # Loop over possible k
+        # Get fresh model instance for each cluster
+        print(f"Training for cluster {num_clusters}")
+
+        # INITIALIZE MODEL
+        model, tokenizer = Config(
+            model_name=args.model_name
+        ).forward()  # Get fresh model instance
+        clusters = Clusters(model, tokenizer, num_clusters, args.enable_BSGC)
+        bs = autotune_batch_size(
+            model, tokenizer
+        )  # Check what this does in utils: I set a ceiling at bs=32 as to avoid overfitting given simplicity
+        args.batch_size = bs
+
+        # CLUSTER THE MODEL WEIGHTS AND GET (U, V) FOR EACH LAYER
+        svd_dict = (
+            clusters.forward()
+        )  # This is the dictionary containing U, V for each layer for a given k!
+        svd_clusters_dict[num_clusters] = svd_dict  # Storing for dumping later
+
+        repo_id = prepare_hub_name(args, num_clusters, USER) + "FixCluster"
+
+        # INITIALIZE TRAINER
+        trainer = Trainer(
+            model=model,
+            tokenizer=tokenizer,
+            batch_size=args.batch_size,
+            num_clusters=num_clusters,
+            steps_to_cluster=150,  # Play with this value to start clustering at a later moment!
+            model_name=args.model_name.split("/")[-1] + "_lr_" + str(args.lr),
+            enable_BSGC=args.enable_BSGC,
+            do_modularity=args.do_modularity,
+            mix_ravel=args.mix_data,
+            ckpt_name=repo_id,
+        )
+
+        # TRAIN THE MODEL WITH CLUSTERED WEIGHTS
+        cluster_metrics = trainer.train(
+            cluster_dict=svd_dict,
+            num_epochs=args.num_epochs,
+            lr=args.lr,
+        )
+
+        all_clusters_metrics[num_clusters] = cluster_metrics
+
+        # Push model, tokenizer to huggingface
+        trainer.model.push_to_hub(repo_id)
+        trainer.tokenizer.push_to_hub(repo_id)
+
+    # SANITIZE MODEL NAME
+    sanitized_model_name = sanitize_filename(repo_id)
+
+    # DUMP THE SVD DICTIONARY
+    with open(f"svd_dict_{sanitized_model_name}.pkl", "wb") as f:
+        pkl.dump(svd_clusters_dict, f)
+
+    # DUMP THE METRICS DICTIONARY
+    with open(f"metrics_dict_{sanitized_model_name}.pkl", "wb") as f:
+        pkl.dump(all_clusters_metrics, f)
 
 
 if __name__ == "__main__":
