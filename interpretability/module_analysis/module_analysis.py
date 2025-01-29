@@ -322,6 +322,7 @@ class intervention:
             
         elif func == "final_analysis":
             self.final_analysis(self.args, self.config)
+            self.pie_chart()
             
             
     
@@ -401,16 +402,17 @@ def main():
     for i in tqdm(range(4)):
         if i == 0:
             print(f"Intervention using the index {i} on layer {args.num_layer}")
-            int.forward(index1, module = "mod1")
-        elif i == 1:
-            print(f"Intervention using the index {i} on layer {args.num_layer}")
-            int.forward(index2, module = "mod2")
-        elif i == 2:
-            print(f"Intervention using the index {i} on layer {args.num_layer}")
-            int.forward(index3, module = "mod3")
+            pass
+            # int.forward(index1, module = "mod1")
+        # elif i == 1:
+        #     print(f"Intervention using the index {i} on layer {args.num_layer}")
+        #     int.forward(index2, module = "mod2")
+        # elif i == 2:
+        #     print(f"Intervention using the index {i} on layer {args.num_layer}")
+        #     int.forward(index3, module = "mod3")
         elif i == 3:
             print(f"Intervention using the index {i} on layer {args.num_layer}")
-            int.forward(index4, module = "mod4")
+            # int.forward(index4, module = "mod4")
             int.forward(index4, module="mod4", func = "final_analysis")
     
     
