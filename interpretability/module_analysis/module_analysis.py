@@ -73,11 +73,11 @@ class intervention:
             else:
                 prediction.append(0)
 
-        os.makedirs(f"{self.config[self.args.model]['data_path']}/{self.args.modeltype}", exist_ok=True)
-        with open(f"{self.config[self.args.model]['data_path']}/{self.args.modeltype}/prediction_{self.args.type_of_intervention}_layer{self.args.num_layer}_{self.module}.pkl", "wb") as f:
+        os.makedirs(f"{config[self.args.model]['data_path']}/{self.args.modeltype}", exist_ok=True)
+        with open(f"{config[self.args.model]['data_path']}/{self.args.modeltype}/prediction_{self.args.type_of_intervention}_layer{self.args.num_layer}_{module}.pkl", "wb") as f:
             pkl.dump(prediction, f)
         
-        with open(f"{self.config[self.args.model]['data_path']}/{self.args.modeltype}/samples_{self.args.type_of_intervention}_layer{self.args.num_layer}_{self.module}.pkl", "wb") as f:
+        with open(f"{config[self.args.model]['data_path']}/{self.args.modeltype}/samples_{self.args.type_of_intervention}_layer{self.args.num_layer}_{module}.pkl", "wb") as f:
             pkl.dump(correct_samples, f)    
     
     
@@ -92,7 +92,7 @@ class intervention:
         
         for module in ["mod1", "mod2", "mod3", "mod4"]:
             
-            with open(f"{self.config[self.args.model]['data_path']}/{self.args.modeltype}/prediction_{self.args.type_of_intervention}_layer{self.args.num_layer}_{self.module}.pkl", "rb") as f:
+            with open(f"{self.config[self.args.model]['data_path']}/{self.args.modeltype}/prediction_{self.args.type_of_intervention}_layer{self.args.num_layer}_{module}.pkl", "rb") as f:
                 prediction = pkl.load(f)
             
             print(prediction)

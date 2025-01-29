@@ -8,99 +8,84 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")
 from __init__ import *
 
 
-def config_(args):
-    
-    with open("interpretability/ravel_analysis/config.yaml", "r") as f:
-        config = yaml.safe_load(f)
-    
-    #TODO: make it generalisable for different type of models, so the model names can be give in parser
-    #TODO: similarly the data to be operated upon needs to be reloaded again and again, so also goes into parser
-    
-    print(args.model)
-    
-    if args.model == "gpt2":
-        model = HookedTransformer.from_pretrained(config[args.model]['model_name'])
-        tokenizer = transformers.GPT2Tokenizer.from_pretrained(config[args.model]['tokenizer_name'])
-        model.load_state_dict(torch.load(config[args.model][args.modeltype], map_location=args.device, weights_only=True))
-        data = config[args.model]['data']
+
+class intervention:
+    def __init__(self, args):
+        self.args = args
+        '''
+        We will be limiting our intervention on the modules for just 3 layers.
+        Based on these intervention we will be building our data.
         
-    else:
-        model = AutoModelForCausalLM.from_pretrained(config[args.model][args.modeltype], map_location=args.device)
-        tokenizer = AutoTokenizer.from_pretrained(config[args.model]['tokenizer_name'])
-        samples = pkl.load(open(config[args.model]['data'], "rb"))
-        data = config[args.model]['data']
-    
-    samples_ = pkl.load(open(data, "rb"))
-    samples = samples_[args.entity]['retained']
+        It will be computed in two formats:
         
-    logging.basicConfig(filename = config[args.model]['log_file'],
-                    level=logging.INFO, 
-                    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-    logging.info(model)
-    
-    
-    return model, tokenizer, args.device, samples, config
+        1. Switch off 1 module M, i.e. keep 3 modules on - for one layer we can also use this, but could be minimal.
+        2. Switch off 3 modules, and keep 1 module M on - if the acc is reasonable we can have this only as intervention.
 
-
-def intervention(args, index, module, func = "analysis"):
-    '''
-    We will be limiting our intervention on the modules for just 3 layers.
-    Based on these intervention we will be building our data.
+        Do type 1 intervention for one layer, i.e. Layer 6.
+        For many layers we can focus on type 2 intervention.
+        '''
+        
     
-    It will be computed in two formats:
+    def config_(self):
     
-    1. Switch off 1 module M, i.e. keep 3 modules on - for one layer we can also use this, but could be minimal.
-    2. Switch off 3 modules, and keep 1 module M on - if the acc is reasonable we can have this only as intervention.
-
-    Do type 1 intervention for one layer, i.e. Layer 6.
-    For many layers we can focus on type 2 intervention.
-    '''
-    
-    model, tokenizer, device, samples, config = config_(args)
-
-    def hook_fn(module, input, output):
-        mod_output = output.clone()
-        if index == "baseline":
-            return output
+        with open("interpretability/ravel_analysis/config.yaml", "r") as f:
+            config = yaml.safe_load(f)
+        
+        print(self.args.model)
+        
+        if self.args.model == "gpt2":
+            model = HookedTransformer.from_pretrained(config[self.args.model]['model_name'])
+            tokenizer = transformers.GPT2Tokenizer.from_pretrained(config[self.args.model]['tokenizer_name'])
+            model.load_state_dict(torch.load(config[self.args.model][self.args.modeltype], map_location=self.args.device, weights_only=True))
+            
         else:
-            if len(index) == 2:
-                mod_output[:, :, index[0]:index[1]] = 0
-            elif len(index) == 4:
-                mod_output[:, :, index[0]:index[1]] = 0
-                mod_output[:, :, index[2]:index[3]] = 0
-            output = mod_output
-            return output
+            model = AutoModelForCausalLM.from_pretrained(config[self.args.model][self.args.modeltype], device_map=self.args.device)
+            tokenizer = AutoTokenizer.from_pretrained(config[self.args.model]['tokenizer_name'])
+            samples = pkl.load(open(config[self.args.model]['data_path'], "rb"))
 
-    hook_ = model.blocks[args.num_layer].mlp.hook_pre.register_forward_hook(hook_fn)
+            
+        logging.basicConfig(filename = config[self.args.model]['log_file'],
+                        level=logging.INFO, 
+                        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        logging.info(model)
+        
+        
+        return model, tokenizer, self.args.device, config, samples
+
+
     
-    
-    
-    def analysis(args, module, samples, config):
+    def analysis(self, args, module, samples, config, tokenizer):
         
         correct = 0; total = 0
         prediction = []
         correct_samples = []
         for sample_idx in tqdm(range(len(samples))):
-            encoded = tokenizer.encode(samples[sample_idx][0], return_tensors="pt")
-            sample = encoded.to(device)
-            logits = model(sample)
+            encoded = tokenizer(samples[sample_idx][0], return_tensors = "pt")
+            ground_truth = samples[sample_idx][1]
+            sample = encoded['input_ids'].to(self.device)
             predicted_string = []
             # comparing second last token of generated sentence with last token of ground truth word
-            if sample[:,-1].item() == logits[:,-2,:].argmax(dim = -1).item(): 
+            if self.args.model == "pythia70m" or "pythia1.4b":
+                logits = self.model(sample)[0]
+            elif self.args.model == "gpt2":
+                logits = self.model(sample)
+            if ground_truth.split()[0] == tokenizer.decode(logits[:,-2,:].argmax(dim = -1).item()).split()[0]: 
                 prediction.append(1)
                 correct_samples.append(sample)
             else:
                 prediction.append(0)
 
-        os.makedirs(f"{config[args.model]['data_path']}/{args.modeltype}", exist_ok=True)
-        with open(f"{config[args.model]['data_path']}/{args.modeltype}/prediction_{args.type_of_intervention}_layer{args.num_layer}_{module}.pkl", "wb") as f:
+        os.makedirs(f"{config[self.args.model]['data_path']}/{self.args.modeltype}", exist_ok=True)
+        with open(f"{config[self.args.model]['data_path']}/{self.args.modeltype}/prediction_{self.args.type_of_intervention}_layer{self.args.num_layer}_{module}.pkl", "wb") as f:
             pkl.dump(prediction, f)
         
-        with open(f"{config[args.model]['data_path']}/{args.modeltype}/samples_{args.type_of_intervention}_layer{args.num_layer}_{module}.pkl", "wb") as f:
+        with open(f"{config[self.args.model]['data_path']}/{self.args.modeltype}/samples_{self.args.type_of_intervention}_layer{self.args.num_layer}_{module}.pkl", "wb") as f:
             pkl.dump(correct_samples, f)    
     
     
-    def final_analysis(args, config):
+    
+    
+    def final_analysis(self, args, config):
         
         final_dict = {}
         mean_acc = []
@@ -109,7 +94,7 @@ def intervention(args, index, module, func = "analysis"):
         
         for module in ["mod1", "mod2", "mod3", "mod4"]:
             
-            with open(f"{config[args.model]['data_path']}/{args.modeltype}/prediction_{args.type_of_intervention}_layer{args.num_layer}_{module}.pkl", "rb") as f:
+            with open(f"{self.config[self.args.model]['data_path']}/{self.args.modeltype}/prediction_{self.args.type_of_intervention}_layer{self.args.num_layer}_{module}.pkl", "rb") as f:
                 prediction = pkl.load(f)
             
             print(prediction)
@@ -155,138 +140,132 @@ def intervention(args, index, module, func = "analysis"):
         ]
 
         # Unzipping the filtered tuples back into separate lists
-        try:
-            list1_filtered, list2_filtered, list3_filtered, list4_filtered = map(list, zip(*filtered_lists))
-            no_graph = 0
-        except: 
-            no_graph = 1
+        self.list1_filtered, self.list2_filtered, self.list3_filtered, self.list4_filtered = map(list, zip(*filtered_lists))
         
-        def old_graph():
-            '''
-            The visualisation of the messy graphs which has many towers and stuff.
-            '''
-            # Plotting
-            plt.subplots(figsize=(20, 5))
-            x = np.arange(len(list1_filtered))
-            p1 = plt.bar(x, list1_filtered, label='Module 1', width=0.5)
-            p2 = plt.bar(x, list2_filtered, label='Module 2', width=0.5, bottom=list1_filtered)
-            p3 = plt.bar(x, list3_filtered, label='Module 3', width=0.5, bottom=np.add(list1_filtered, list2_filtered))
-            p4 = plt.bar(x, list4_filtered, label='Module 4', width=0.5, bottom=np.add(list1_filtered, np.add(list2_filtered, list3_filtered)))
-
-            plt.xlabel('Sample Index', size=12)
-            plt.ylabel('Effect of Module', size=12)
-            plt.title('Spike denotes when a module is turned off the accuracy for sample goes down', size=16)
-            plt.legend()
-            plt.grid(True)
-            os.makedirs(f"{config[args.model]['plot_path']}/{args.modeltype}", exist_ok=True)
-            plt.savefig(f"{config[args.model]['plot_path']}/{args.modeltype}/{args.type_of_intervention}_layer{args.num_layer}_effect.png", dpi = 300)
-            plt.close()
         
-        def get_contrasting_color(hex_color):
-            """
-            Returns white for dark colors and black for light colors
-            based on the brightness of the input color.
-            """
-            rgb = to_rgb(hex_color)  # Convert hex to RGB
-            brightness = rgb_to_hsv(rgb)[2]  # Get the "value" component of HSV
-            return "white" if brightness < 0.5 else "black"
-
-        def pie_chart():
-            """
-            Creates a pie chart showing the distribution of samples depending on the number of modules they depend on.
-            """
-            # Initialize counters
-            all_four = 0
-            all_three = 0
-            all_two = 0
-            all_one = 0
-
-            # Count the occurrences for each category
-            for sample_idx in range(len(list1_filtered)):
-                if list1_filtered[sample_idx] == list2_filtered[sample_idx] == list3_filtered[sample_idx] == list4_filtered[sample_idx] == 1:
-                    all_four += 1
-                elif (
-                    list1_filtered[sample_idx] == list2_filtered[sample_idx] == list3_filtered[sample_idx] == 1 or
-                    list1_filtered[sample_idx] == list2_filtered[sample_idx] == list4_filtered[sample_idx] == 1 or
-                    list1_filtered[sample_idx] == list3_filtered[sample_idx] == list4_filtered[sample_idx] == 1 or
-                    list2_filtered[sample_idx] == list3_filtered[sample_idx] == list4_filtered[sample_idx] == 1
-                ):
-                    all_three += 1
-                elif (
-                    list1_filtered[sample_idx] == list2_filtered[sample_idx] == 1 or
-                    list1_filtered[sample_idx] == list3_filtered[sample_idx] == 1 or
-                    list1_filtered[sample_idx] == list4_filtered[sample_idx] == 1 or
-                    list2_filtered[sample_idx] == list3_filtered[sample_idx] == 1 or
-                    list2_filtered[sample_idx] == list4_filtered[sample_idx] == 1 or
-                    list3_filtered[sample_idx] == list4_filtered[sample_idx] == 1
-                ):
-                    all_two += 1
-                elif (
-                    list1_filtered[sample_idx] == 1 or
-                    list2_filtered[sample_idx] == 1 or
-                    list3_filtered[sample_idx] == 1 or
-                    list4_filtered[sample_idx] == 1
-                ):
-                    all_one += 1
-
-            # Data for the pie chart
-            labels = ['Depends on all 4', 'Depends on all 3', 'Depends on all 2', 'Depends on just 1']
-            sizes = [all_four, all_three, all_two, all_one] # Replace with your actual data
-            colors = ['#267326', '#5db85d', '#91d891', '#d4f7d4']  # Green gradient (dark to light)
-
-            # Set up Matplotlib parameters for better styling
-            mpl.rcParams.update({
-                'font.size': 14,        # General font size
-                'axes.titlesize': 18,   # Title size
-                'axes.labelsize': 16,   # Label size
-                'legend.fontsize': 12,  # Legend font size
-            })
-
-            # Create the pie chart
-            fig, ax = plt.subplots(figsize=(8, 6))  # Adjust figure size
-            wedges, texts, autotexts = ax.pie(
-                sizes,
-                labels=labels,
-                colors=colors,
-                autopct='%1.1f%%',       # Show percentages with 1 decimal place
-                startangle=90,          # Start from top (90 degrees)
-                textprops={'fontsize': 14}  # Font size for text
-            )
-
-            # Adjust label and percentage text colors dynamically
-            for i, autotext in enumerate(autotexts):
-                autotext.set_color(get_contrasting_color(colors[i]))  # Adjust percentage text color
-                autotext.set_weight("bold")  # Make percentages bold
-            for text in texts:
-                text.set_color("black")  # Keep labels black for consistency
-
-            ax.axis('equal')  # Equal aspect ratio ensures the pie is drawn as a circle
-            plt.title("Effect of Modules on Samples", pad=20)  # Add padding to title for spacing
-
-            # Save the figure
-            output_path = f"{config[args.model]['plot_path']}/{args.modeltype}/pie_chart"
-            os.makedirs(output_path, exist_ok=True)
-            plt.tight_layout()  # Adjust layout to prevent clipping
-            plt.savefig(f"{output_path}/{args.type_of_intervention}_layer{args.num_layer}_pie.png", dpi=400, bbox_inches='tight', format='png')  # High DPI for professional quality
-            plt.close()
         
-        if no_graph == 1:
-            pass
-        else:
-            pie_chart()
+    def old_graph(self):
+        '''
+        The visualisation of the messy graphs which has many towers and stuff.
+        '''
+        # Plotting
+        plt.subplots(figsize=(20, 5))
+        x = np.arange(len(self.list1_filtered))
+        p1 = plt.bar(x, self.list1_filtered, label='Module 1', width=0.5)
+        p2 = plt.bar(x, self.list2_filtered, label='Module 2', width=0.5, bottom=self.list1_filtered)
+        p3 = plt.bar(x, self.list3_filtered, label='Module 3', width=0.5, bottom=np.add(self.list1_filtered, self.list2_filtered))
+        p4 = plt.bar(x, self.list4_filtered, label='Module 4', width=0.5, bottom=np.add(self.list1_filtered, np.add(self.list2_filtered, self.list3_filtered)))
 
+        plt.xlabel('Sample Index', size=12)
+        plt.ylabel('Effect of Module', size=12)
+        plt.title('Spike denotes when a module is turned off the accuracy for sample goes down', size=16)
+        plt.legend()
+        plt.grid(True)
+        os.makedirs(f"{self.config[self.args.model]['plot_path']}/{self.args.modeltype}/{self.args.type_of_intervention}_layer{self.args.num_layer}_effect.png", dpi = 300)
+        plt.close()
+        
+        
+    def get_contrasting_color(self, hex_color):
+        """
+        Returns white for dark colors and black for light colors
+        based on the brightness of the input color.
+        """
+        rgb = to_rgb(hex_color)  # Convert hex to RGB
+        brightness = rgb_to_hsv(rgb)[2]  # Get the "value" component of HSV
+        return "white" if brightness < 0.5 else "black"
 
+    def pie_chart(self):
+        """
+        Creates a pie chart showing the distribution of samples depending on the number of modules they depend on.
+        """
+        # Initialize counters
+        all_four = 0
+        all_three = 0
+        all_two = 0
+        all_one = 0
+
+        # Count the occurrences for each category
+        for sample_idx in range(len(self.list1_filtered)):
+            if self.list1_filtered[sample_idx] == self.list2_filtered[sample_idx] == self.list3_filtered[sample_idx] == self.list4_filtered[sample_idx] == 1:
+                all_four += 1
+            elif (
+                self.list1_filtered[sample_idx] == self.list2_filtered[sample_idx] == self.list3_filtered[sample_idx] == 1 or
+                self.list1_filtered[sample_idx] == self.list2_filtered[sample_idx] == self.list4_filtered[sample_idx] == 1 or
+                self.list1_filtered[sample_idx] == self.list3_filtered[sample_idx] == self.list4_filtered[sample_idx] == 1 or
+                self.list2_filtered[sample_idx] == self.list3_filtered[sample_idx] == self.list4_filtered[sample_idx] == 1
+            ):
+                all_three += 1
+            elif (
+                self.list1_filtered[sample_idx] == self.list2_filtered[sample_idx] == 1 or
+                self.list1_filtered[sample_idx] == self.list3_filtered[sample_idx] == 1 or
+                self.list1_filtered[sample_idx] == self.list4_filtered[sample_idx] == 1 or
+                self.list2_filtered[sample_idx] == self.list3_filtered[sample_idx] == 1 or
+                self.list2_filtered[sample_idx] == self.list4_filtered[sample_idx] == 1 or
+                self.list3_filtered[sample_idx] == self.list4_filtered[sample_idx] == 1
+            ):
+                all_two += 1
+            elif (
+                self.list1_filtered[sample_idx] == 1 or
+                self.list2_filtered[sample_idx] == 1 or
+                self.list3_filtered[sample_idx] == 1 or
+                self.list4_filtered[sample_idx] == 1
+            ):
+                all_one += 1
+
+        # Data for the pie chart
+        labels = ['Depends on all 4', 'Depends on all 3', 'Depends on all 2', 'Depends on just 1']
+        sizes = [all_four, all_three, all_two, all_one] # Replace with your actual data
+        colors = ['#267326', '#5db85d', '#91d891', '#d4f7d4']  # Green gradient (dark to light)
+
+        # Set up Matplotlib parameters for better styling
+        mpl.rcParams.update({
+            'font.size': 14,        # General font size
+            'axes.titlesize': 18,   # Title size
+            'axes.labelsize': 16,   # Label size
+            'legend.fontsize': 12,  # Legend font size
+        })
+
+        # Create the pie chart
+        fig, ax = plt.subplots(figsize=(8, 6))  # Adjust figure size
+        wedges, texts, autotexts = ax.pie(
+            sizes,
+            labels=labels,
+            colors=colors,
+            autopct='%1.1f%%',       # Show percentages with 1 decimal place
+            startangle=90,          # Start from top (90 degrees)
+            textprops={'fontsize': 14}  # Font size for text
+        )
+
+        # Adjust label and percentage text colors dynamically
+        for i, autotext in enumerate(autotexts):
+            autotext.set_color(self.get_contrasting_color(colors[i]))  # Adjust percentage text color
+            autotext.set_weight("bold")  # Make percentages bold
+        for text in texts:
+            text.set_color("black")  # Keep labels black for consistency
+
+        ax.axis('equal')  # Equal aspect ratio ensures the pie is drawn as a circle
+        plt.title("Effect of Modules on Samples", pad=20)  # Add padding to title for spacing
+
+        # Save the figure
+        output_path = f"{self.config[self.args.model]['plot_path']}/{self.args.modeltype}/pie_chart"
+        os.makedirs(output_path, exist_ok=True)
+        plt.tight_layout()  # Adjust layout to prevent clipping
+        plt.savefig(f"{output_path}/{self.args.type_of_intervention}_layer{self.args.num_layer}_pie.png", dpi=400, bbox_inches='tight', format='png')  # High DPI for professional quality
+        plt.close()
     
     
-    def dataset_prepartion(args):
+    def dataset_prepartion(self):
         correct = 0; total = 0
         samples = []
-        for idx, data_ in enumerate(tqdm(make_wiki_data_loader(tokenizer, batch_size=args.batch_size), 
+        for idx, data_ in enumerate(tqdm(make_wiki_data_loader(self.tokenizer, batch_size=self.args.batch_size), 
                                     desc="Processing batches", 
-                                    total=len(make_wiki_data_loader(tokenizer, batch_size=args.batch_size)))):
+                                    total=len(make_wiki_data_loader(self.tokenizer, batch_size=self.args.batch_size)))):
             
-            data = data_['tokens'].to(device)
-            logits = model(data)
+            data = data_['tokens'].to(self.device)
+            if self.args.model == "pythia70m" or "pythia1.4b":
+                logits = self.model(data)[0]
+            elif self.args.model == "gpt2":
+                logits = self.model(data)
             if data[:,-1].item() == logits[:,-2,:].argmax(dim = -1).item():
                 correct+=1
                 samples.append(data)
@@ -295,23 +274,61 @@ def intervention(args, index, module, func = "analysis"):
             if idx%100 == 0:
                 print(f"Accuracy: {correct/total}")
             
-        hook_.remove()
+        self.hook_.remove()
         
-        os.makedirs(f"interp-gains-gpt2small/data/{args.modeltype}", exist_ok=True)
-        with open(f"interp-gains-gpt2small/data/{args.modeltype}/cropped_dataset_last_token.pkl", "wb") as f:
+        os.makedirs(f"interpretability/ravel_analysis/data/{self.args.model}/{self.args.modeltype}", exist_ok=True)
+        with open(f"interpretability/ravel_analysis/data/{self.args.model}/{self.args.modeltype}/cropped_dataset_last_token.pkl", "wb") as f:
             pkl.dump(samples, f)
         
-        return correct/total
+        return samples
     
     
-    if func == "analysis":
-        _ = analysis(args = args,
-                    module = module, 
-                    samples = samples, 
-                    config = config)
+    def hook(self, index):
+        def hook_fn(module, input, output):
+            mod_output = output.clone()
+            if index == "baseline":
+                return output
+            else:
+                if len(index) == 2:
+                    mod_output[:, :, index[0]:index[1]] = 0
+                elif len(index) == 4:
+                    mod_output[:, :, index[0]:index[1]] = 0
+                    mod_output[:, :, index[2]:index[3]] = 0
+                output = mod_output
+                return output
+
+        if self.args.model == "pythia70m" or "pythia1.4b":
+            self.hook_ = self.model.gpt_neox.layers[self.args.num_layer].mlp.dense_h_to_4h.register_forward_hook(hook_fn)
+        elif self.args.model == "gpt2":
+            self.hook_ = self.model.transformer.h[self.args.num_layer].mlp.hook_pre.register_forward_hook(hook_fn)
+    
+    def forward(self, index, module, func = "analysis"):
         
-    elif func == "final_analysis":
-        final_analysis(args, config)
+        self.model, self.tokenizer, self.device, self.config, tokenizer = self.config_()
+        self.hook(index)
+        
+        
+        try:
+            with open(f"interpretability/module_analysis/data/{self.args.model}/{self.args.modeltype}/cropped_dataset_last_token.pkl", "rb") as f:
+                samples = pkl.load(f)   
+        except:
+            samples = self.dataset_prepartion()
+            
+        
+        
+        if func == "analysis":
+            _ = self.analysis(args = self.args,
+                            module = module, 
+                            samples = samples, 
+                            config = self.config,
+                            tokenizer = tokenizer
+                            )
+            
+            
+        elif func == "final_analysis":
+            self.final_analysis(self.args, self.config)
+            
+            
     
 
 def visualize(config, args):
@@ -346,10 +363,9 @@ def visualize(config, args):
         
         # Save the plot to a file if specified
         plt.savefig(folder_path+"collage.png", dpi=300, bbox_inches='tight', format='png')
-        
 
-def main():
-    
+
+def parser_arguments():
     parser = ArgumentParser()
     parser.add_argument('--device', type=str, default='cuda')
     parser.add_argument('--batch_size', type=int, default=1)
@@ -359,7 +375,13 @@ def main():
     parser.add_argument('--entity', type=str, required=True)
     parser.add_argument('--modeltype', type=str, required=True)
     
-    args = parser.parse_args()
+    return parser.parse_args()
+
+
+
+def main():
+    
+    args = parser_arguments()
     
     if args.type_of_intervention == "type1":
         # 1024//4 = 256
@@ -379,25 +401,24 @@ def main():
     layer_wise_loss_dict = {}
     all_sample_loss = {}
     
-    
+    int = intervention(args)
     
     for i in tqdm(range(4)):
         if i == 0:
             print(f"Intervention using the index {i} on layer {args.num_layer}")
-            intervention(args, index1, module = "mod1")
+            int.forward(index1, module = "mod1")
         elif i == 1:
             print(f"Intervention using the index {i} on layer {args.num_layer}")
-            intervention(args, index2, module = "mod2")
+            int.forward(index2, module = "mod2")
         elif i == 2:
             print(f"Intervention using the index {i} on layer {args.num_layer}")
-            intervention(args, index3, module = "mod3")
+            int.forward(index3, module = "mod3")
         elif i == 3:
             print(f"Intervention using the index {i} on layer {args.num_layer}")
-            intervention(args, index4, module="mod4")
-            intervention(args, index4, module="mod4", func = "final_analysis")
+            int.forward(index4, module = "mod4")
+            int.forward(index4, module="mod4", func = "final_analysis")
     
     
-    model, tokenizer, device, samples, config = config_(args)
     # visualize(config, args)
 
 
