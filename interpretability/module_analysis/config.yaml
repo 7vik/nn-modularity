@@ -8,25 +8,28 @@ gpt2:
   data_path: interpretability/module_analysis/data/gpt2
 
 
+
 pythia70m:
   model_name: EleutherAI/pythia-70m
   tokenizer_name: EleutherAI/pythia-70m
-  model: jvelja/pythia-finetune-pythia-70m-clusters-4-NoBSGC
-  nmodel: jvelja/pythia-finetune-pythia-70m-clusters-4-NoBSGC-lr_5e-05-NoModularity
+  # model: jvelja/pythia-finetune-pythia-70m-clusters-4-NoBSGC
+  model: jvelja/pythia-finetune-pythia-70m-clusters-4-NoBSGC-lr_5e-05-Modularity-WIKIFixCluster
+  # nmodel: jvelja/pythia-finetune-pythia-70m-clusters-4-NoBSGC-lr_5e-05-NoModularity
+  nmodel: jvelja/pythia-finetune-pythia-70m-NoBSGC-lr_5e-05-NoModularity-WIKIFixCluster
   log_file: interpretability/logs/pythia70m_model_analysis_on_ravel.log
   plot_path: interpretability/module_analysis/plots/pythia70m
   data_path: interpretability/module_analysis/data/pythia70m
 
 
 
-pythia1.4b:
-  model_name: EleutherAI/pythia-1.4B
-  tokenizer_name: EleutherAI/pythia-1.4B
-  model: jvelja/pythia-finetune-pythia-1.4b-clusters-4-NoBSGC
-  # non_modular_model_path: interpretability/data/models/ravel_non_modular_mlp_in_out.pt
-  log_file: interpretability/module_analysis/logs/pythia1.4b_model_analysis_on_ravel.log
-  plot_path: interpretability/module_analysis/plots/pythia1.4b
-  data_path: interpretability/module_analysis/data/pythia1.4b
+# pythia1.4b:
+#   model_name: EleutherAI/pythia-1.4B
+#   tokenizer_name: EleutherAI/pythia-1.4B
+#   model: jvelja/pythia-finetune-pythia-1.4b-clusters-4-NoBSGC
+#   # non_modular_model_path: interpretability/data/models/ravel_non_modular_mlp_in_out.pt
+#   log_file: interpretability/module_analysis/logs/pythia1.4b_model_analysis_on_ravel.log
+#   plot_path: interpretability/module_analysis/plots/pythia1.4b
+#   data_path: interpretability/module_analysis/data/pythia1.4b
 
 
 
