@@ -191,7 +191,7 @@ interpretability/data/models/*
 interpretability/secret.yaml
 interpretability/plots/cluster_correlation/*.png
 
-interpretabiltiy/ravel_analysis/data/*
+interpretabiltiy/ravel_analysis/data/gpt2/*
 
 interp-gains-gpt2small/secret.yaml
 interp-gains-gpt2small/plots/cluster_correlation/*.pngwandb/

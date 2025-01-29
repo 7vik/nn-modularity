@@ -62,7 +62,8 @@ class intervention:
         prediction = []
         correct_samples = []
         print(samples_)
-        samples = samples_[config[self.args.entity]]['retained']
+        key = args.entity
+        samples = samples_[key]['retained']
         for sample_idx in tqdm(range(len(samples))):
             encoded = tokenizer(samples[sample_idx][0], return_tensors = "pt")
             ground_truth = samples[sample_idx][1]
