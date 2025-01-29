@@ -55,11 +55,12 @@ class intervention:
 
 
     
-    def analysis(self, args, module, samples, config, tokenizer):
+    def analysis(self, args, module, samples_, config, tokenizer):
         
         correct = 0; total = 0
         prediction = []
         correct_samples = []
+        samples = samples_[config[self.args.entity]]['retained']
         for sample_idx in tqdm(range(len(samples))):
             encoded = tokenizer(samples[sample_idx][0], return_tensors = "pt")
             ground_truth = samples[sample_idx][1]
@@ -76,11 +77,11 @@ class intervention:
             else:
                 prediction.append(0)
 
-        os.makedirs(f"{config[self.args.model]['data_path']}/{self.args.modeltype}", exist_ok=True)
-        with open(f"{config[self.args.model]['data_path']}/{self.args.modeltype}/prediction_{self.args.type_of_intervention}_layer{self.args.num_layer}_{module}.pkl", "wb") as f:
+        os.makedirs(f"{config[self.args.model]['data_path']}/{self.args.modeltype}/{self.args.entity}", exist_ok=True)
+        with open(f"{config[self.args.model]['data_path']}/{self.args.modeltype}/{self.args.entity}/prediction_{self.args.type_of_intervention}_layer{self.args.num_layer}_{module}.pkl", "wb") as f:
             pkl.dump(prediction, f)
         
-        with open(f"{config[self.args.model]['data_path']}/{self.args.modeltype}/samples_{self.args.type_of_intervention}_layer{self.args.num_layer}_{module}.pkl", "wb") as f:
+        with open(f"{config[self.args.model]['data_path']}/{self.args.modeltype}/{self.args.entity}/samples_{self.args.type_of_intervention}_layer{self.args.num_layer}_{module}.pkl", "wb") as f:
             pkl.dump(correct_samples, f)    
     
     
@@ -95,7 +96,7 @@ class intervention:
         
         for module in ["mod1", "mod2", "mod3", "mod4"]:
             
-            with open(f"{self.config[self.args.model]['data_path']}/{self.args.modeltype}/prediction_{self.args.type_of_intervention}_layer{self.args.num_layer}_{module}.pkl", "rb") as f:
+            with open(f"{self.config[self.args.model]['data_path']}/{self.args.modeltype}/{self.args.entity}/prediction_{self.args.type_of_intervention}_layer{self.args.num_layer}_{module}.pkl", "rb") as f:
                 prediction = pkl.load(f)
             
             print(prediction)
@@ -111,8 +112,8 @@ class intervention:
         
         plt.legend()
         plt.grid(True)
-        os.makedirs(f"{config[args.model]['plot_path']}/{args.modeltype}", exist_ok=True)
-        plt.savefig(f"{config[args.model]['plot_path']}/{args.modeltype}/{args.type_of_intervention}_layer{args.num_layer}_accuracy.png", dpi = 300)
+        os.makedirs(f"{config[args.model]['plot_path']}/{args.modeltype}/{self.args.entity}", exist_ok=True)
+        plt.savefig(f"{config[args.model]['plot_path']}/{args.modeltype}/{self.args.entity}/{args.type_of_intervention}_layer{args.num_layer}_accuracy.png", dpi = 300)
         plt.close()
         
         # visualize(final_dict)
@@ -162,7 +163,7 @@ class intervention:
         plt.title('Spike denotes when a module is turned off the accuracy for sample goes down', size=16)
         plt.legend()
         plt.grid(True)
-        os.makedirs(f"{self.config[self.args.model]['plot_path']}/{self.args.modeltype}/{self.args.type_of_intervention}_layer{self.args.num_layer}_effect.png", dpi = 300)
+        os.makedirs(f"{self.config[self.args.model]['plot_path']}/{self.args.modeltype}/{self.args.entity}/{self.args.type_of_intervention}_layer{self.args.num_layer}_effect.png", dpi = 300)
         plt.close()
         
         
@@ -248,7 +249,7 @@ class intervention:
         plt.title("Effect of Modules on Samples", pad=20)  # Add padding to title for spacing
 
         # Save the figure
-        output_path = f"{self.config[self.args.model]['plot_path']}/{self.args.modeltype}/pie_chart"
+        output_path = f"{self.config[self.args.model]['plot_path']}/{self.args.modeltype}/pie_chart/{self.args.entity}"
         os.makedirs(output_path, exist_ok=True)
         plt.tight_layout()  # Adjust layout to prevent clipping
         plt.savefig(f"{output_path}/{self.args.type_of_intervention}_layer{self.args.num_layer}_pie.png", dpi=400, bbox_inches='tight', format='png')  # High DPI for professional quality
@@ -277,8 +278,8 @@ class intervention:
             
         self.hook_.remove()
         
-        os.makedirs(f"interpretability/ravel_analysis/data/{self.args.model}/{self.args.modeltype}", exist_ok=True)
-        with open(f"interpretability/ravel_analysis/data/{self.args.model}/{self.args.modeltype}/cropped_dataset_last_token.pkl", "wb") as f:
+        os.makedirs(f"interpretability/ravel_analysis/data/{self.args.model}/{self.args.modeltype}/{self.args.entity}", exist_ok=True)
+        with open(f"interpretability/ravel_analysis/data/{self.args.model}/{self.args.modeltype}/{self.args.entity}/cropped_dataset_last_token.pkl", "wb") as f:
             pkl.dump(samples, f)
         
         return samples
@@ -304,16 +305,9 @@ class intervention:
             self.hook_ = self.model.transformer.h[self.args.num_layer].mlp.hook_pre.register_forward_hook(hook_fn)
     
     def forward(self, index, module, func = "analysis"):
-        
-        self.model, self.tokenizer, self.device, self.config, tokenizer = self.config_()
+
+        self.model, tokenizer, self.device, self.config, samples = self.config_()
         self.hook(index)
-        
-        
-        try:
-            with open(f"interpretability/module_analysis/data/{self.args.model}/{self.args.modeltype}/cropped_dataset_last_token.pkl", "rb") as f:
-                samples = pkl.load(f)   
-        except:
-            samples = self.dataset_prepartion()
             
         
         
