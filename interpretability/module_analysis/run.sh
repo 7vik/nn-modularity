@@ -1,11 +1,12 @@
 layers=(2 5 6 7 10)
 
-models=("pythia70m" "pythia1.4b")
+# models=("pythia70m" "pythia1.4b")
+models=("pythia70m")
 
 type_intervention=("type1" "type2")
 
-# model_types=("model" "nmodel")
-model_types=("model")
+model_types=("model" "nmodel")
+# model_types=("model")
 
 for model in "${models[@]}"; do
     for layer in "${layers[@]}"; do
