@@ -10,8 +10,13 @@ from huggingface_hub import login
 from trainer import Trainer
 from utils import autotune_batch_size, prepare_hub_name, sanitize_filename
 
+<<<<<<< HEAD
 os.environ["HUGGINGFACE_TOKEN"] = XXXX
 USER = XXXX
+=======
+os.environ["HUGGINGFACE_TOKEN"] = XXX
+USER = YYYY
+>>>>>>> ac71ce33a56c14d00bf69a54cddd1686ce1e0e86
 
 
 def main():
