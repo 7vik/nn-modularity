@@ -38,12 +38,12 @@ class intervention:
             tokenizer = transformers.GPT2Tokenizer.from_pretrained(config[self.args.model]['tokenizer_name'])
             # model.load_state_dict(torch.load(config[self.args.model][self.args.modeltype], map_location=self.args.device, weights_only=True))
             model = AutoModelForCausalLM.from_pretrained(config[self.args.model][self.args.modeltype], device_map=self.args.device)
-            samples = pkl.load(open(config[self.args.model]['data_path'], "rb"))
+            samples = pkl.load(open(config[self.args.model]['data'], "rb"))
 
         else:
             model = AutoModelForCausalLM.from_pretrained(config[self.args.model][self.args.modeltype], device_map=self.args.device)
             tokenizer = AutoTokenizer.from_pretrained(config[self.args.model]['tokenizer_name'])
-            samples = pkl.load(open(config[self.args.model]['data_path'], "rb"))
+            samples = pkl.load(open(config[self.args.model]['data'], "rb"))
 
             
         logging.basicConfig(filename = config[self.args.model]['log_file'],
