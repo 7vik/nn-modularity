@@ -34,10 +34,11 @@ class intervention:
         print(self.args.model)
         
         if self.args.model == "gpt2":
-            model = HookedTransformer.from_pretrained(config[self.args.model]['model_name'])
+            # model = HookedTransformer.from_pretrained(config[self.args.model]['model_name'])
             tokenizer = transformers.GPT2Tokenizer.from_pretrained(config[self.args.model]['tokenizer_name'])
-            model.load_state_dict(torch.load(config[self.args.model][self.args.modeltype], map_location=self.args.device, weights_only=True))
-            
+            # model.load_state_dict(torch.load(config[self.args.model][self.args.modeltype], map_location=self.args.device, weights_only=True))
+            model = AutoModelForCausalLM.from_pretrained(config[self.args.model][self.args.modeltype], device_map=self.args.device)
+
         else:
             model = AutoModelForCausalLM.from_pretrained(config[self.args.model][self.args.modeltype], device_map=self.args.device)
             tokenizer = AutoTokenizer.from_pretrained(config[self.args.model]['tokenizer_name'])
