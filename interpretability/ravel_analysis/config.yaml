@@ -3,9 +3,11 @@ gpt2:
   tokenizer_name: gpt2
   data: interpretability/ravel_analysis/data/gpt2_prompt_data.pkl
   # model: jvelja/pythia-finetune-gpt2-clusters-4-NoBSGC-lr_0.0001-Modularity-RAVEL_MIXEDFixCluster # attains low modularity score
-  model: jvelja/pythia-finetune-gpt2-clusters-4-NoBSGC-lr_0.0005-Modularity-RAVEL_MIXEDFixCluster
+  # model: jvelja/pythia-finetune-gpt2-clusters-4-NoBSGC-lr_0.0005-Modularity-RAVEL_MIXEDFixCluster
+  model: interpretability/module_analysis/data/models/wiki_fully_modular_mlp_in_out.pt
   # nmodel: interpretability/data/models/wiki_non_modular_mlp_in_out.pt
-  nmodel: jvelja/pythia-finetune-gpt2-NoBSGC-lr_0.0005-NoModularity-RAVEL_MIXEDFixCluster
+  # nmodel: jvelja/pythia-finetune-gpt2-NoBSGC-lr_0.0005-NoModularity-RAVEL_MIXEDFixCluster
+  nmodel: interpretability/module_analysis/data/models/wiki_non_modular_mlp_in_out.pt
   log_file: interpretability/logs/gpt2_model_analysis_on_ravel.log
   data_path: interpretability/ravel_analysis/data/gpt2
   plot_path: interpretability/ravel_analysis/plot/gpt2
@@ -17,8 +19,10 @@ pythia70m:
   model_name: EleutherAI/pythia-70m
   tokenizer_name: EleutherAI/pythia-70m
   data: interpretability/ravel_analysis/data/pythia-70m_prompt_data.pkl
-  model: jvelja/pythia-finetune-pythia-70m-clusters-4-NoBSGC-lr_5e-05-Modularity-RAVEL_MIXEDFixCluster
-  nmodel: jvelja/pythia-finetune-pythia-70m-NoBSGC-lr_5e-05-NoModularity-RAVEL_MIXEDFixCluster
+  # model: jvelja/pythia-finetune-pythia-70m-clusters-4-NoBSGC-lr_5e-05-Modularity-RAVEL_MIXEDFixCluster
+  # nmodel: jvelja/pythia-finetune-pythia-70m-NoBSGC-lr_5e-05-NoModularity-RAVEL_MIXEDFixCluster
+  model: jvelja/pythia-finetune-pythia-70m-clusters-4-NoBSGC-lr_5e-05-Modularity-WIKIFixCluster
+  nmodel: jvelja/pythia-finetune-pythia-70m-NoBSGC-lr_5e-05-NoModularity-WIKIFixCluster
   log_file: interpretability/logs/pythia70m_model_analysis_on_ravel.log
   data_path: interpretability/ravel_analysis/data/pythia70m
   plot_path: interpretability/ravel_analysis/plot/pythia70m

@@ -3,7 +3,8 @@ entities=("city-country" "city-continent" "city-language" "object-size")
 layers=(2 5 6 7 10)
 # layers=(0 1 2 3 4 5)
 
-models=("gpt2" "pythia70m" "pythia1.4b")
+# models=("gpt2" "pythia70m" "pythia1.4b")
+models=("gpt2")
 
 type_intervention=("type1" "type2")
 

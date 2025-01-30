@@ -73,9 +73,9 @@ class intervention:
             ground_truth = " " + samples[sample_idx][1]
 
             # printing to see tf is going on
-            print("#" * 50)
-            print(f"Prompt ={tokenizer.decode(encoded['input_ids'][0])}")
-            print(f"Ground truth ={ground_truth}")
+            # print("#" * 50)
+            # print(f"Prompt ={tokenizer.decode(encoded['input_ids'][0])}")
+            # print(f"Ground truth ={ground_truth}")
 
             sample = encoded["input_ids"].to(self.device)
 
@@ -86,25 +86,25 @@ class intervention:
             elif self.args.model == "gpt2":
                 logits = self.model(sample)
 
-            print(
-                "Predicted =",
-                tokenizer.decode(logits[:, -1, :].argmax(dim=-1).item()),
-            )
-            print("#" * 50)
-            print(
-                "Match?",
-                ground_truth.split()[0]
-                == tokenizer.decode(logits[:, -1, :].argmax(dim=-1).item()).split()[0],
-            )
-            print(f"ground truth tokens: {tokenizer(ground_truth)}")
-            print(f"predicted tokens: {logits[:, -1, :].argmax(dim=-1).item()}")
-            print(
-                "Alt match?",
-                ground_truth.startswith(
-                    tokenizer.decode(logits[:, -1, :].argmax(dim=-1).item())
-                ),
-            )
-            print()
+            # print(
+            #     "Predicted =",
+            #     tokenizer.decode(logits[:, -1, :].argmax(dim=-1).item()),
+            # )
+            # print("#" * 50)
+            # print(
+            #     "Match?",
+            #     ground_truth.split()[0]
+            #     == tokenizer.decode(logits[:, -1, :].argmax(dim=-1).item()).split()[0],
+            # )
+            # print(f"ground truth tokens: {tokenizer(ground_truth)}")
+            # print(f"predicted tokens: {logits[:, -1, :].argmax(dim=-1).item()}")
+            # print(
+            #     "Alt match?",
+            #     ground_truth.startswith(
+            #         tokenizer.decode(logits[:, -1, :].argmax(dim=-1).item())
+            #     ),
+            # )
+            # print()
             if (
                 # ground_truth.split()[0]
                 # == tokenizer.decode(logits[:, -1, :].argmax(dim=-1).item()).split()[0]
@@ -451,14 +451,13 @@ class intervention:
                 self.args.num_layer
             ].mlp.dense_h_to_4h.register_forward_hook(hook_fn)
         elif self.args.model == "gpt2":
-            print(self.model)
             self.hook_ = self.model.transformer.h[
                 self.args.num_layer
             ].mlp.c_fc.register_forward_hook(hook_fn)
 
     def forward(self, index, module, func="analysis"):
         self.model, tokenizer, self.device, self.config, samples = self.config_()
-        print(self.args.model)
+        # print(self.args.model)
         self.hook(index)
 
         if func == "analysis":
